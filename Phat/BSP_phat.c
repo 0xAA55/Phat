@@ -2,7 +2,8 @@
 
 #ifdef _WIN32
 #ifndef __weak
-#define __weak __declspec(selectany)
+#define __weak
+#endif
 #endif
 
 #include <Windows.h>

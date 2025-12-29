@@ -159,6 +159,11 @@ static PhatState Phat_ReadSectorThroughCache(Phat_p phat, LBA_t LBA, Phat_Sector
 	return PhatState_InternalError;
 }
 
+static void Phat_SetCachedSectorModified(Phat_SectorCache_p p_cached_sector)
+{
+	Phat_SetCachedSectorUnsync(p_cached_sector);
+}
+
 PhatState Phat_Init(Phat_p phat)
 {
 	memset(phat, 0, sizeof * phat);

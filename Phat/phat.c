@@ -657,6 +657,7 @@ PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 		name_start = ptr;
 		while (*ptr == L'\0' || *ptr == L'/' || *ptr == L'\\') ptr++;
 		name_len = (size_t)(ptr - name_start);
+		if (name_len > MAX_LFN) return PhatState_InvalidPath;
 		while (*ptr == L'/' || *ptr == L'\\') ptr++;
 
 		if (*ptr) // is middle path

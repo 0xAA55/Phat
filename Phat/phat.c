@@ -178,6 +178,33 @@ static PhatState Phat_WriteSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t nu
 	return PhatState_WriteFail;
 }
 
+static LBA_t Phat_CHS_to_LBA(uint8_t head, uint8_t sector, uint8_t cylinder)
+{
+	uint8_t actual_sector = sector & 0x1F;
+	uint16_t actual_cylinder = ((uint16_t)(sector & 0xC0) << 2) | cylinder;
+	if (actual_sector < 1) return 0;
+	return ((LBA_t)actual_cylinder * 255 + head) * 63 + (actual_sector - 1);
+}
+
+static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting_LBA, LBA_t *p_size_in_sectors)
+{
+	LBA_t starting_LBA_from_CHS = Phat_CHS_to_LBA(entry->starting_head, entry->starting_sector, entry->starting_cylinder);
+	LBA_t ending_LBA_from_CHS = Phat_CHS_to_LBA(entry->ending_head, entry->ending_sector, entry->ending_cylinder);
+	LBA_t size_in_sectors_from_CHS = ending_LBA_from_CHS - starting_LBA_from_CHS + 1;
+	if (entry->starting_LBA != 0 && entry->size_in_sectors != 0)
+	{
+		*p_starting_LBA = entry->starting_LBA;
+		*p_size_in_sectors = entry->size_in_sectors;
+	}
+	else
+	{
+		if (ending_LBA_from_CHS < starting_LBA_from_CHS) return 0;
+		*p_starting_LBA = starting_LBA_from_CHS;
+		*p_size_in_sectors = size_in_sectors_from_CHS;
+	}
+	return 1;
+}
+
 PhatState Phat_Init(Phat_p phat)
 {
 	memset(phat, 0, sizeof * phat);

@@ -460,3 +460,10 @@ static Phat_Date_t Phat_ParseDate(uint16_t date)
 	return d;
 }
 
+static uint8_t Phat_LFN_ChkSum(uint8_t *file_name_8_3)
+{
+	uint8_t sum = 0;
+	for (int i = 0; i < 11; i++) sum = ((sum & 1) ? 0x80 : 0) + (sum >> 1) + *file_name_8_3++;
+	return sum;
+}
+

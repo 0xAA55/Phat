@@ -519,3 +519,28 @@ static PhatBool_t Phat_IsValidLFNEntry(Phat_DirInfo_p lfn_item)
 	return 1;
 }
 
+static PhatState Phat_MoveToNextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
+{
+	PhatState ret = PhatState_OK;
+	uint32_t next_cluster;
+	if (dir_info->cur_diritem_in_cur_cluster++ >= phat->num_diritems_in_a_cluster)
+	{
+		ret = Phat_GetFATNextCluster(phat, dir_info->dir_current_cluster, &next_cluster);
+		if (ret == PhatState_OK)
+		{
+			dir_info->cur_diritem_in_cur_cluster = 0;
+			dir_info->dir_current_cluster = next_cluster;
+		}
+		else if (ret == PhatState_EndOfFATChain)
+		{
+			dir_info->cur_diritem_in_cur_cluster--;
+			return PhatState_EndOfDirectory;
+		}
+		else
+		{
+			return ret;
+		}
+	}
+	return ret;
+}
+

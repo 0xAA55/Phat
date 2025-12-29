@@ -13,6 +13,8 @@
 #define SECTORCACHE_VALID 0x40000000
 #define SECTORCACHE_AGE_BM 0x3FFFFFFF
 
+typedef uint16_t WChar_t, *WChar_p;
+
 typedef struct Phat_SectorCache_s
 {
 	uint8_t data[512];

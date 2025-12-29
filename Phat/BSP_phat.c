@@ -67,7 +67,8 @@ __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, voi
 	}
 	Distance.QuadPart = (uint64_t)LBA * 512;
 	if (!SetFilePointerEx(hDevice, Distance, NULL, FILE_BEGIN)) return 0;
-	if (!ReadFile(hDevice, buffer, num_blocks * 512, &num_read, NULL)) return 0;
+	assert(num_blocks * 512 <= 0xFFFFFFFF);
+	if (!ReadFile(hDevice, buffer, (DWORD)(num_blocks * 512), &num_read, NULL)) return 0;
 	if (num_read != num_blocks * 512) return 0;
 	return 1;
 }
@@ -83,7 +84,8 @@ __weak PhatBool_t BSP_WriteSector(void *buffer, LBA_t LBA, size_t num_blocks, vo
 	}
 	Distance.QuadPart = (uint64_t)LBA * 512;
 	if (!SetFilePointerEx(hDevice, Distance, NULL, FILE_BEGIN)) return 0;
-	if (!WriteFile(hDevice, buffer, num_blocks * 512, &num_wrote, NULL)) return 0;
+	assert(num_blocks * 512 <= 0xFFFFFFFF);
+	if (!WriteFile(hDevice, buffer, (DWORD)(num_blocks * 512), &num_wrote, NULL)) return 0;
 	if (num_wrote != num_blocks * 512) return 0;
 	return 1;
 }

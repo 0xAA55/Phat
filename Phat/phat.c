@@ -711,21 +711,16 @@ void Phat_NormalizePath(WChar_p path)
 	}
 }
 
-PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
+PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {
 	LBA_t cur_dir_sector = phat->root_dir_start_LBA;
 	uint32_t cur_dir_cluster = 2;
 	WChar_p ptr = path;
-	WChar_p path_tail;
 	WChar_p name_start;
 	size_t name_len;
 	PhatState ret = PhatState_OK;
 
-	while (*ptr) ptr++;
-	path_tail = ptr;
-	while ((size_t)path_tail > (size_t)path && (path_tail[-1] == L'/' || path_tail[-1] == L'\\')) *--path_tail = L'\0';
-	ptr = path;
-	while (*ptr == L'/' || *ptr == L'\\') ptr++;
+	Phat_NormalizePath(path);
 
 	for (;;)
 	{

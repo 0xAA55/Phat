@@ -112,7 +112,7 @@ void Phat_ToUpperDirectoryPath(WChar_p path);
 void Phat_NormalizePath(WChar_p path);
 
 PhatState Phat_Mount(Phat_p phat, int partition_index);
-PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info);
+PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info);
 PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info);
 PhatState Phat_CloseDir(Phat_p phat, Phat_DirInfo_p dir_info);
 

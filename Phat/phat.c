@@ -432,6 +432,11 @@ static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint3
 	return PhatState_OK;
 }
 
+static LBA_t Phat_ClusterToLBA(Phat_p phat, uint32_t cluster)
+{
+	return phat->data_start_LBA + (LBA_t)(cluster - 2) * phat->sectors_per_cluster;
+}
+
 static Phat_Time_t Phat_ParseTime(uint16_t time, uint8_t tenths)
 {
 	Phat_Time_t t =

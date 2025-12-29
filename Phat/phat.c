@@ -544,3 +544,131 @@ static PhatState Phat_MoveToNextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 	return ret;
 }
 
+PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
+{
+	PhatState ret = PhatState_OK;
+	Phat_DirItem_t diritem;
+	for (;;)
+	{
+		ret = Phat_GetDirItem(phat, dir_info, &diritem);
+		if (ret != PhatState_OK) return ret;
+		if (Phat_IsValidLFNEntry(&diritem))
+		{
+			Phat_SuckLFNIntoBuffer((Phat_LFN_Entry_p)&diritem, dir_info);
+			ret = Phat_MoveToNextDirItem(phat, dir_info);
+			if (ret != PhatState_OK) return ret;
+		}
+		else if (diritem.file_name_8_3[0] == 0xE5)
+		{
+			dir_info->LFN_length = 0;
+			ret = Phat_MoveToNextDirItem(phat, dir_info);
+			if (ret != PhatState_OK) return ret;
+		}
+		else if (diritem.file_name_8_3[0] == 0x00)
+		{
+			dir_info->LFN_length = 0;
+			return PhatState_EndOfDirectory;
+		}
+		else
+		{
+			memcpy(dir_info->file_name_8_3, diritem.file_name_8_3, 11);
+			dir_info->attributes = diritem.attributes;
+			dir_info->ctime = Phat_ParseTime(diritem.creation_time, diritem.creation_time_tenths);
+			dir_info->cdate = Phat_ParseDate(diritem.creation_date);
+			dir_info->mtime = Phat_ParseTime(diritem.last_modification_time, 0);
+			dir_info->mdate = Phat_ParseDate(diritem.last_modification_date);
+			dir_info->adate = Phat_ParseDate(diritem.last_access_date);
+			dir_info->file_size = diritem.file_size;
+			dir_info->first_cluster = ((uint32_t)diritem.first_cluster_high << 16) | diritem.first_cluster_low;
+			if (dir_info->LFN_length == 0)
+			{
+				size_t copy_to = 0;
+				for (size_t i = 0; i < 8; i++)
+				{
+					uint8_t ch = diritem.file_name_8_3[i];
+					if (!ch) break;
+					if (ch != ' ') copy_to = i;
+				}
+				for (size_t i = 0; i < copy_to; i++)
+				{
+					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(diritem.file_name_8_3[i]);
+				}
+				if (diritem.file_name_8_3[8] != ' ')
+				{
+					dir_info->LFN_name[dir_info->LFN_length++] == L'.';
+					for (size_t i = 8; i < 11; i++)
+					{
+						uint8_t ch = diritem.file_name_8_3[i];
+						if (!ch) break;
+						if (ch != ' ') copy_to = i;
+					}
+				}
+				for (size_t i = 8; i < copy_to; i++)
+				{
+					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(diritem.file_name_8_3[i]);
+				}
+				dir_info->LFN_name[dir_info->LFN_length] = L'\0';
+			}
+			Phat_MoveToNextDirItem(phat, dir_info);
+			return PhatState_OK;
+		}
+	}
+}
+
+PhatState Phat_CloseDir(Phat_p phat, Phat_DirInfo_p dir_info)
+{
+	UNUSED(phat);
+	memset(dir_info, 0, sizeof * dir_info);
+	return PhatState_OK;
+}
+
+PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
+{
+	LBA_t cur_dir_sector = phat->root_dir_start_LBA;
+	uint32_t cur_dir_cluster = 2;
+	WChar_p ptr = path;
+	WChar_p path_tail;
+	WChar_p name_start;
+	size_t name_len;
+	PhatState ret = PhatState_OK;
+
+	while (*ptr) ptr++;
+	path_tail = ptr;
+	while ((size_t)path_tail > (size_t)path && (path_tail[-1] == L'/' || path_tail[-1] == L'\\')) *--path_tail = L'\0';
+	ptr = path;
+	while (*ptr == L'/' || *ptr == L'\\') ptr++;
+
+	for (;;)
+	{
+		name_start = ptr;
+		while (*ptr == L'\0' || *ptr == L'/' || *ptr == L'\\') ptr++;
+		name_len = (size_t)(ptr - name_start);
+
+		if (*ptr) // is middle path
+		{
+			dir_info->dir_start_cluster = cur_dir_cluster;
+			dir_info->dir_current_cluster = cur_dir_cluster;
+			dir_info->cur_diritem_in_cur_cluster = 0;
+			for (;;)
+			{
+				ret = Phat_NextDirItem(phat, dir_info);
+				if (ret == PhatState_EndOfDirectory)
+				{
+					return PhatState_DirectoryNotFound;
+				}
+				else if (ret != PhatState_OK)
+				{
+					return ret;
+				}
+			}
+		}
+		else // is last path
+		{
+			cur_dir_cluster = dir_info->first_cluster;
+			dir_info->dir_start_cluster = cur_dir_cluster;
+			dir_info->dir_current_cluster = cur_dir_cluster;
+			dir_info->cur_diritem_in_cur_cluster = 0;
+			return PhatState_OK;
+		}
+	}
+}

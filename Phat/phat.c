@@ -164,6 +164,20 @@ static void Phat_SetCachedSectorModified(Phat_SectorCache_p p_cached_sector)
 	Phat_SetCachedSectorUnsync(p_cached_sector);
 }
 
+static PhatState Phat_ReadSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, void *buffer)
+{
+	if (phat->driver.fn_read_sector(buffer, LBA, num_sectors, phat->driver.userdata))
+		return PhatState_OK;
+	return PhatState_ReadFail;
+}
+
+static PhatState Phat_WriteSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, const void *buffer)
+{
+	if (phat->driver.fn_write_sector(buffer, LBA, num_sectors, phat->driver.userdata))
+		return PhatState_OK;
+	return PhatState_WriteFail;
+}
+
 PhatState Phat_Init(Phat_p phat)
 {
 	memset(phat, 0, sizeof * phat);

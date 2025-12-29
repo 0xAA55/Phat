@@ -59,6 +59,22 @@ typedef struct Phat_DBR_s
 	uint8_t boot_code[420];
 	uint16_t boot_sector_signature;
 }Phat_DBR_t, *Phat_DBR_p;
+
+typedef struct Phat_DirItem_s
+{
+	uint8_t file_name_8_3[11];
+	uint8_t attributes;
+	uint8_t reserved;
+	uint8_t creation_time_tenths;
+	uint16_t creation_time;
+	uint16_t creation_date;
+	uint16_t last_access_date;
+	uint16_t first_cluster_high;
+	uint16_t last_modification_time;
+	uint16_t last_modification_date;
+	uint16_t first_cluster_low;
+	uint32_t file_size;
+}Phat_DirItem_t, *Phat_DirItem_p;
 #pragma pack(pop)
 
 static PhatBool_t Phat_IsCachedSectorSync(Phat_SectorCache_p cached_sector)

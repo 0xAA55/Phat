@@ -41,6 +41,21 @@ typedef struct Phat_s
 	uint16_t num_diritems_in_a_cluster;
 }Phat_t, *Phat_p;
 
+typedef struct Phat_Date_s
+{
+	uint16_t year;
+	uint8_t month;
+	uint8_t day;
+}Phat_Date_t, *Phat_Date_p;
+
+typedef struct Phat_Time_s
+{
+	uint8_t hours;
+	uint8_t minutes;
+	uint8_t seconds;
+	uint16_t milliseconds;
+}Phat_Time_t, *Phat_Time_p;
+
 typedef enum PhatState_e
 {
 	PhatState_OK = 0,

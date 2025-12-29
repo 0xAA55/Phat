@@ -6,8 +6,16 @@
 #endif
 #endif
 
-#include <Windows.h>
+__weak PhatBool_t BSP_OpenDevice(void *userdata);
+__weak PhatBool_t BSP_CloseDevice(void *userdata);
+__weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
+__weak PhatBool_t BSP_WriteSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
+
+#ifdef _WIN32
+
 #include <stdio.h>
+#include <assert.h>
+#include <Windows.h>
 
 static const WCHAR* BSP_DeviceFilePath = L"\\\\.\\PhysicalDrive3:";
 

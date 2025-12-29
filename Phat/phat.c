@@ -675,7 +675,7 @@ PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 				{
 					return ret;
 				}
-				if (!memcmp(dir_info->LFN_name, name_start, name_len * sizeof(WChar_t)) && dir_info->LFN_name[name_len] == L'\0')
+				if (!memcmp(dir_info->LFN_name, name_start, name_len * sizeof(WChar_t)) && name_len == dir_info->LFN_length)
 				{
 					if ((dir_info->attributes & ATTRIB_DIRECTORY) == 0)
 					{

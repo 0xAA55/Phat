@@ -35,6 +35,8 @@ typedef struct Phat_s
 	uint8_t num_FATs;
 	uint16_t bytes_per_sector;
 	uint8_t sectors_per_cluster;
+	uint8_t num_diritems_in_a_sector;
+	uint16_t num_diritems_in_a_cluster;
 }Phat_t, *Phat_p;
 
 typedef enum PhatState_e

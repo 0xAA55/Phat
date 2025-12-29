@@ -347,6 +347,8 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	phat->data_start_LBA = phat->root_dir_start_LBA + ((phat->FAT_bits == 32) ? 0 : (LBA_t)((dbr->root_entry_count * 32) + (dbr->bytes_per_sector - 1)) / dbr->bytes_per_sector);
 	phat->bytes_per_sector = dbr->bytes_per_sector;
 	phat->sectors_per_cluster = dbr->sectors_per_cluster;
+	phat->num_diritems_in_a_sector = phat->bytes_per_sector / 32;
+	phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
 
 	return PhatState_OK;
 }

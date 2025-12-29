@@ -236,6 +236,51 @@ PhatState Phat_Init(Phat_p phat)
 	return PhatState_OK;
 }
 
+PhatState Phat_Mount(Phat_p phat, int partition_index)
+{
+	LBA_t partition_start_LBA = 0;
+	LBA_t total_sectors = 0;
+	PhatState ret = PhatState_OK;
+	Phat_SectorCache_p cached_sector;
+	Phat_MBR_p mbr;
+	Phat_DBR_p dbr;
+	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	mbr = (Phat_MBR_p)cached_sector->data;
+	if (Phat_IsSectorMBR(mbr))
+	{
+		if (partition_index < 0 || partition_index >= 4) return PhatState_InvalidParameter;
+		if (!Phat_GetMBREntryInfo(&mbr->partition_entries[partition_index], &partition_start_LBA, &total_sectors)) return PhatState_PartitionTableError;
+		ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+	}
+	else if (partition_index != 0)
+	{
+		return PhatState_InvalidParameter;
+	}
+
+	dbr = (Phat_DBR_p)cached_sector->data;
+	if (!Phat_IsSectorDBR(dbr)) return PhatState_PartitionError;
+	if (!memcmp(dbr->file_system_type, "FAT12   ", 8))
+		phat->FAT_bits = 12;
+	else if (!memcmp(dbr->file_system_type, "FAT16   ", 8))
+		phat->FAT_bits = 16;
+	else if (!memcmp(dbr->file_system_type, "FAT32   ", 8))
+		phat->FAT_bits = 32;
+	else
+		return PhatState_PartitionError;
+	phat->partition_start_LBA = partition_start_LBA;
+	phat->total_sectors = total_sectors;
+	phat->num_FATs = dbr->num_FATs;
+	phat->FAT_size_in_sectors = (phat->FAT_bits == 32) ? dbr->FAT_size_32 : dbr->FAT_size_16;
+	phat->FAT1_start_LBA = partition_start_LBA + dbr->reserved_sector_count;
+	phat->root_dir_start_LBA = (phat->FAT_bits == 32) ? (LBA_t)dbr->root_dir_cluster * dbr->sectors_per_cluster : (LBA_t)phat->FAT1_start_LBA + (LBA_t)phat->FAT_size_in_sectors * phat->num_FATs;
+	phat->data_start_LBA = phat->root_dir_start_LBA + ((phat->FAT_bits == 32) ? 0 : (LBA_t)((dbr->root_entry_count * 32) + (dbr->bytes_per_sector - 1)) / dbr->bytes_per_sector);
+	phat->bytes_per_sector = dbr->bytes_per_sector;
+	phat->sectors_per_cluster = dbr->sectors_per_cluster;
+
+	return PhatState_OK;
 }
 
 PhatState Phat_DeInit(Phat_p phat)

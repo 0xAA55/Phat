@@ -38,34 +38,36 @@ static void Phat_SetCachedSectorValid(Phat_SectorCache_p cached_sector)
 	cached_sector->usage |= SECTORCACHE_VALID;
 }
 
-static PhatBool_t Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
-{
-	if (Phat_IsCachedSectorValid(cached_sector) && !Phat_IsCachedSectorSync(cached_sector))
-	{
-		if (!Phat_WriteBackCachedSector(phat, cached_sector))
-		{
-			return 0;
-		}
-		Phat_SetCachedSectorSync(cached_sector);
-	}
-	cached_sector->usage &= ~SECTORCACHE_VALID;
-}
-
-static PhatBool_t Phat_WriteBackCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
+static PhatState Phat_WriteBackCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
 {
 	if (!Phat_IsCachedSectorSync(cached_sector))
 	{
 		if (!phat->driver.fn_write_sector(cached_sector->data, cached_sector->LBA, 1, phat->driver.userdata))
 		{
-			return 0;
+			return PhatState_WriteFail;
 		}
 		cached_sector->usage |= SECTORCACHE_SYNC;
 	}
-	return 1;
+	return PhatState_OK;
 }
 
-static PhatBool_t Phat_GetCachedSector(Phat_p phat, LBA_t LBA, Phat_SectorCache_p *pp_cached_sector)
+static PhatState Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
 {
+	if (Phat_IsCachedSectorValid(cached_sector) && !Phat_IsCachedSectorSync(cached_sector))
+	{
+		if (!Phat_WriteBackCachedSector(phat, cached_sector))
+		{
+			return PhatState_WriteFail;
+		}
+		Phat_SetCachedSectorSync(cached_sector);
+	}
+	cached_sector->usage &= ~SECTORCACHE_VALID;
+	return PhatState_OK;
+}
+
+static PhatState Phat_ReadSectorThroughCache(Phat_p phat, LBA_t LBA, Phat_SectorCache_p *pp_cached_sector)
+{
+	PhatState ret = PhatState_OK;
 	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
 	{
 		Phat_SectorCache_p cached_sector = &phat->cache[i];
@@ -73,7 +75,7 @@ static PhatBool_t Phat_GetCachedSector(Phat_p phat, LBA_t LBA, Phat_SectorCache_
 		{
 			Phat_SetCachedSectorUnsync(cached_sector);
 			*pp_cached_sector = cached_sector;
-			return 1;
+			return PhatState_OK;
 		}
 	}
 
@@ -81,49 +83,52 @@ static PhatBool_t Phat_GetCachedSector(Phat_p phat, LBA_t LBA, Phat_SectorCache_
 	{
 		Phat_SectorCache_p cached_sector = &phat->cache[i];
 		int MustDo = (i == PHAT_CACHED_SECTORS - 1);
-		if (MustDo || (!Phat_IsCachedSectorValid(cached_sector) && Phat_GetCachedSectorAge(cached_sector) - phat->LRU_age >= PHAT_CACHED_SECTORS))
+		if (MustDo || !Phat_IsCachedSectorValid(cached_sector) || Phat_GetCachedSectorAge(cached_sector) - phat->LRU_age >= PHAT_CACHED_SECTORS)
 		{
-			if (!Phat_InvalidateCachedSector(phat, cached_sector))
-			{
-				return 0;
-			}
+			ret = Phat_InvalidateCachedSector(phat, cached_sector);
+			if (ret != PhatState_OK) return ret;
 			if (!phat->driver.fn_read_sector(cached_sector->data, LBA, 1, phat->driver.userdata))
 			{
-				return 0;
+				return PhatState_ReadFail;
 			}
 			phat->LRU_age++;
 			cached_sector->LBA = LBA;
 			Phat_SetCachedSectorValid(cached_sector);
-			Phat_SetCachedSectorUnsync(cached_sector);
+			Phat_SetCachedSectorSync(cached_sector);
 			Phat_SetCachedSectorAge(cached_sector, phat->LRU_age);
 			*pp_cached_sector = cached_sector;
-			return 1;
+			return PhatState_OK;
 		}
 	}
+
+	return PhatState_InternalError;
 }
 
-PhatBool_t Phat_Init(Phat_p phat)
+PhatState Phat_Init(Phat_p phat)
 {
 	memset(phat, 0, sizeof * phat);
 	phat->driver = Phat_InitDriver(NULL);
-	return 1;
+	if (!Phat_OpenDevice(&phat->driver)) return PhatState_DriverError;
+	return PhatState_OK;
 }
 
-PhatBool_t Phat_DeInit(Phat_p phat)
+}
+
+PhatState Phat_DeInit(Phat_p phat)
 {
+	PhatState ret = PhatState_OK;
 	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
 	{
 		Phat_SectorCache_p cached_sector = &phat->cache[i];
 		if (Phat_IsCachedSectorValid(cached_sector))
 		{
-			if (!Phat_InvalidateCachedSector(phat, cached_sector))
-			{
-				return 0;
-			}
+			ret = Phat_InvalidateCachedSector(phat, cached_sector);
+			if (ret != PhatState_OK) return ret;
 		}
 	}
+	if (!Phat_CloseDevice(&phat->driver)) return PhatState_DriverError;
 	Phat_DeInitDriver(&phat->driver);
 	memset(phat, 0, sizeof * phat);
-	return 1;
+	return PhatState_OK;
 }
 

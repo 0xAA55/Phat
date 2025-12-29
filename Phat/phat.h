@@ -27,7 +27,21 @@ typedef struct Phat_s
 	Phat_Disk_Driver_t driver;
 }Phat_t, *Phat_p;
 
-PhatBool_t Phat_Init(Phat_p phat);
-PhatBool_t Phat_DeInit(Phat_p phat);
+typedef enum PhatState_e
+{
+	PhatState_OK = 0,
+	PhatState_InvalidParameter,
+	PhatState_InternalError,
+	PhatState_DriverError,
+	PhatState_ReadFail,
+	PhatState_WriteFail,
+	PhatState_PartitionTableError,
+	PhatState_PartitionError,
+}PhatState;
+
+PhatState Phat_Init(Phat_p phat);
+PhatState Phat_DeInit(Phat_p phat);
+
+PhatState Phat_Mount(Phat_p phat, int partition_index);
 
 #endif

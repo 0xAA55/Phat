@@ -89,6 +89,13 @@ typedef struct Phat_LFN_Entry_s
 }Phat_LFN_Entry_t, *Phat_LFN_Entry_p;
 #pragma pack(pop)
 
+#define ATTRIB_READ_ONLY 0x01
+#define ATTRIB_HIDDEN 0x02
+#define ATTRIB_SYSTEM 0x04
+#define ATTRIB_VOLUME_ID 0x08
+#define ATTRIB_DIRECTORY 0x10
+#define ATTRIB_ARCHIVE 0x20
+#define ATTRIB_LFN (ATTRIB_READ_ONLY | ATTRIB_HIDDEN | ATTRIB_SYSTEM | ATTRIB_VOLUME_ID)
 static PhatBool_t Phat_IsCachedSectorSync(Phat_SectorCache_p cached_sector)
 {
 	return (cached_sector->usage & SECTORCACHE_SYNC) == SECTORCACHE_SYNC;

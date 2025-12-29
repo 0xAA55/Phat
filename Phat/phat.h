@@ -47,6 +47,11 @@ typedef enum PhatState_e
 	PhatState_WriteFail,
 	PhatState_PartitionTableError,
 	PhatState_PartitionError,
+	PhatState_FATError,
+	PhatState_DirectoryNotFound,
+	PhatState_FileNotFound,
+	PhatState_EndOfDirectory,
+	PhatState_EndOfFATChain,
 }PhatState;
 
 PhatState Phat_Init(Phat_p phat);

@@ -510,3 +510,12 @@ static void Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_p buf
 	}
 }
 
+static PhatBool_t Phat_IsValidLFNEntry(Phat_DirInfo_p lfn_item)
+{
+	Phat_LFN_Entry_p lfne = (Phat_LFN_Entry_p)lfn_item;
+	if (lfne->attributes != ATTRIB_LFN) return 0;
+	if (lfne->type != 0) return 0;
+	if (lfne->first_cluster_low != 0) return 0;
+	return 1;
+}
+

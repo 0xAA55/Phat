@@ -655,6 +655,12 @@ void Phat_ToUpperDirectoryPath(WChar_p path)
 	}
 }
 
+static WChar_p Phat_ToEndOfString(WChar_p string)
+{
+	while (*string) string++;
+	return string;
+}
+
 PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 {
 	LBA_t cur_dir_sector = phat->root_dir_start_LBA;

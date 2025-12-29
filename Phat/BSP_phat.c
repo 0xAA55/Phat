@@ -17,7 +17,7 @@ __weak PhatBool_t BSP_WriteSector(void *buffer, LBA_t LBA, size_t num_blocks, vo
 #include <assert.h>
 #include <Windows.h>
 
-static const WCHAR* BSP_DeviceFilePath = L"\\\\.\\PhysicalDrive3:";
+static const WCHAR* BSP_DeviceFilePath = L"\\\\.\\PhysicalDrive3";
 
 static HANDLE hDevice = INVALID_HANDLE_VALUE;
 

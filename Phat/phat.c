@@ -2,6 +2,61 @@
 
 #include <string.h>
 
+#pragma pack(push, 1)
+typedef struct Phat_MBR_Entry_s
+{
+	uint8_t boot_indicator;
+	uint8_t starting_head;
+	uint8_t starting_sector;
+	uint8_t starting_cylinder;
+	uint8_t partition_type;
+	uint8_t ending_head;
+	uint8_t ending_sector;
+	uint8_t ending_cylinder;
+	uint32_t starting_LBA;
+	uint32_t size_in_sectors;
+}Phat_MBR_Entry_t, *Phat_MBR_Entry_p;
+
+typedef struct Phat_MBR_s
+{
+	uint8_t boot_code[446];
+	Phat_MBR_Entry_t partition_entries[4];
+	uint16_t boot_signature;
+}Phat_MBR_t, *Phat_MBR_p;
+
+typedef struct Phat_DBR_s
+{
+	uint8_t jump_boot[3];
+	uint8_t OEM_name[8];
+	uint16_t bytes_per_sector;
+	uint8_t sectors_per_cluster;
+	uint16_t reserved_sector_count;
+	uint8_t num_FATs;
+	uint16_t root_entry_count;
+	uint16_t total_sectors_16;
+	uint8_t media;
+	uint16_t FAT_size_16;
+	uint16_t sectors_per_track;
+	uint16_t num_heads;
+	uint32_t hidden_sectors;
+	uint32_t total_sectors_32;
+	uint32_t FAT_size_32;
+	uint16_t FATs_are_different;
+	uint16_t version;
+	uint32_t root_dir_cluster;
+	uint16_t FS_info_sector;
+	uint16_t backup_boot_sector;
+	uint8_t reserved[12];
+	uint16_t BIOS_drive_number;
+	uint8_t extension_flag;
+	uint32_t volume_ID;
+	uint8_t volume_label[11];
+	uint8_t file_system_type[8];
+	uint8_t boot_code[420];
+	uint16_t boot_sector_signature;
+}Phat_DBR_t, *Phat_DBR_p;
+#pragma pack(pop)
+
 static PhatBool_t Phat_IsCachedSectorSync(Phat_SectorCache_p cached_sector)
 {
 	return (cached_sector->usage & SECTORCACHE_SYNC) == SECTORCACHE_SYNC;

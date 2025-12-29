@@ -92,6 +92,7 @@ typedef enum PhatState_e
 	PhatState_FATError,
 	PhatState_DirectoryNotFound,
 	PhatState_FileNotFound,
+	PhatState_NotADirectory,
 	PhatState_EndOfDirectory,
 	PhatState_EndOfFATChain,
 }PhatState;

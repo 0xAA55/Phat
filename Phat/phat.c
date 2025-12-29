@@ -467,3 +467,20 @@ static uint8_t Phat_LFN_ChkSum(uint8_t *file_name_8_3)
 	return sum;
 }
 
+static PhatState Phat_GetDirItem(Phat_p phat, Phat_DirInfo_p dir_info, Phat_DirItem_p dir_item)
+{
+	PhatState ret = PhatState_OK;
+	LBA_t dir_sector_LBA;
+	uint32_t item_index_in_sector;
+	Phat_SectorCache_p cached_sector;
+	Phat_DirItem_p dir_items;
+
+	dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + dir_info->cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+	item_index_in_sector = dir_info->cur_diritem_in_cur_cluster % phat->num_diritems_in_a_sector;
+	ret = Phat_ReadSectorThroughCache(phat, dir_sector_LBA, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+	dir_items = (Phat_DirItem_p)&cached_sector->data[0];
+	*dir_item = dir_items[item_index_in_sector];
+	return PhatState_OK;
+}
+

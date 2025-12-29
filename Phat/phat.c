@@ -636,6 +636,25 @@ PhatState Phat_CloseDir(Phat_p phat, Phat_DirInfo_p dir_info)
 	return PhatState_OK;
 }
 
+void Phat_ToUpperDirectoryPath(WChar_p path)
+{
+	size_t length = 0;
+	PhatBool_t tail_trimming = 1;
+	for (length = 0; path[length]; length++) {}
+	while (length > 0)
+	{
+		length--;
+		if (path[length] == '/' || path[length] == '\\')
+		{
+			if (!tail_trimming)
+				return;
+		}
+		else
+			tail_trimming = 0;
+		path[length] = L'\0';
+	}
+}
+
 PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 {
 	LBA_t cur_dir_sector = phat->root_dir_start_LBA;

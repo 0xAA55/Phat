@@ -484,3 +484,28 @@ static PhatState Phat_GetDirItem(Phat_p phat, Phat_DirInfo_p dir_info, Phat_DirI
 	return PhatState_OK;
 }
 
+static void Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_p buffer)
+{
+	for (size_t i = 0; i < 5; i++)
+	{
+		WChar_t wchar = lfn_item->name1[i];
+		buffer->LFN_name[buffer->LFN_length++] = wchar;
+		if (!wchar) return;
+		if (buffer->LFN_length == 256) return;
+	}
+	for (size_t i = 0; i < 6; i++)
+	{
+		WChar_t wchar = lfn_item->name2[i];
+		buffer->LFN_name[buffer->LFN_length++] = wchar;
+		if (!wchar) return;
+		if (buffer->LFN_length == 256) return;
+	}
+	for (size_t i = 0; i < 2; i++)
+	{
+		WChar_t wchar = lfn_item->name3[i];
+		buffer->LFN_name[buffer->LFN_length++] = wchar;
+		if (!wchar) return;
+		if (buffer->LFN_length == 256) return;
+	}
+}
+

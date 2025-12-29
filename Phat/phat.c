@@ -75,6 +75,18 @@ typedef struct Phat_DirItem_s
 	uint16_t first_cluster_low;
 	uint32_t file_size;
 }Phat_DirItem_t, *Phat_DirItem_p;
+
+typedef struct Phat_LFN_Entry_s
+{
+	uint8_t order;
+	WChar_t name1[5];
+	uint8_t attributes; // Must be ATTRIB_LFN
+	uint8_t type; // Must be 0
+	uint8_t checksum;
+	WChar_t name2[6];
+	uint16_t first_cluster_low; // Must be 0
+	WChar_t name3[2];
+}Phat_LFN_Entry_t, *Phat_LFN_Entry_p;
 #pragma pack(pop)
 
 static PhatBool_t Phat_IsCachedSectorSync(Phat_SectorCache_p cached_sector)

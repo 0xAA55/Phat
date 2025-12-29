@@ -95,6 +95,13 @@ typedef enum PhatState_e
 	PhatState_EndOfFATChain,
 }PhatState;
 
+#define ATTRIB_READ_ONLY 0x01
+#define ATTRIB_HIDDEN 0x02
+#define ATTRIB_SYSTEM 0x04
+#define ATTRIB_VOLUME_ID 0x08
+#define ATTRIB_DIRECTORY 0x10
+#define ATTRIB_ARCHIVE 0x20
+
 PhatState Phat_Init(Phat_p phat);
 PhatState Phat_DeInit(Phat_p phat);
 

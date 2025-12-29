@@ -369,3 +369,63 @@ PhatState Phat_DeInit(Phat_p phat)
 	return PhatState_OK;
 }
 
+static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint32_t *next_cluster)
+{
+	PhatState ret = PhatState_OK;
+	uint32_t fat_offset;
+	LBA_t fat_sector_LBA;
+	int half_cluster = 0;
+	uint16_t raw_entry;
+	uint32_t cluster_number;
+	if (cur_cluster < 2) return PhatState_FATError;
+	cur_cluster -= 2;
+	switch (phat->FAT_bits)
+	{
+	case 12:
+		half_cluster = cur_cluster & 1;
+		fat_offset = cur_cluster + (cur_cluster >> 1);
+		break;
+	case 16:
+		fat_offset = cur_cluster * 2;
+		break;
+	case 32:
+		fat_offset = cur_cluster * 4;
+		break;
+	default:
+		return 0;
+	}
+	fat_sector_LBA = phat->FAT1_start_LBA + (fat_offset / phat->bytes_per_sector);
+	Phat_SectorCache_p cached_sector;
+	ret = Phat_ReadSectorThroughCache(phat, fat_sector_LBA, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+	size_t ent_offset_in_sector = fat_offset % phat->bytes_per_sector;
+	switch (phat->FAT_bits)
+	{
+	case 12:
+		raw_entry = *(uint16_t *)&cached_sector->data[ent_offset_in_sector];
+		if (half_cluster == 0)
+			cluster_number = raw_entry & 0x0FFF;
+		else
+			cluster_number = (raw_entry >> 4) & 0x0FFF;
+		if (cluster_number >= 0xFF8) return PhatState_EndOfFATChain;
+		if (cluster_number >= 0xFF0) return PhatState_FATError;
+		if (cluster_number < 2) return PhatState_FATError;
+		break;
+	case 16:
+		cluster_number = *(uint16_t *)&cached_sector->data[ent_offset_in_sector];
+		if (cluster_number >= 0xFFF8) return PhatState_EndOfFATChain;
+		if (cluster_number >= 0xFFF0) return PhatState_FATError;
+		if (cluster_number < 2) return PhatState_FATError;
+		break;
+	case 32:
+		cluster_number = *(uint32_t *)&cached_sector->data[ent_offset_in_sector];
+		if (cluster_number >= 0x0FFFFFF8) return PhatState_EndOfFATChain;
+		if (cluster_number >= 0x0FFFFFF0) return PhatState_FATError;
+		if (cluster_number < 2) return PhatState_FATError;
+		break;
+	default:
+		return PhatState_InternalError;
+	}
+	*next_cluster = cluster_number;
+	return PhatState_OK;
+}

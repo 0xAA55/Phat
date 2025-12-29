@@ -56,6 +56,24 @@ typedef struct Phat_Time_s
 	uint16_t milliseconds;
 }Phat_Time_t, *Phat_Time_p;
 
+typedef struct Phat_DirInfo_s
+{
+	uint32_t dir_start_cluster;
+	uint32_t dir_current_cluster;
+	uint32_t cur_diritem_in_cur_cluster;
+	uint8_t file_name_8_3[11];
+	uint8_t attributes;
+	Phat_Date_t cdate;
+	Phat_Time_t ctime;
+	Phat_Date_t mdate;
+	Phat_Time_t mtime;
+	Phat_Date_t adate;
+	uint32_t file_size;
+	uint32_t first_cluster;
+	WChar_t LFN_name[256];
+	uint16_t LFN_length;
+}Phat_DirInfo_t, *Phat_DirInfo_p;
+
 typedef enum PhatState_e
 {
 	PhatState_OK = 0,

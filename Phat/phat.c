@@ -205,6 +205,29 @@ static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting
 	return 1;
 }
 
+static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_p dbr)
+{
+	if (dbr->boot_sector_signature != 0xAA55) return 0;
+	if (dbr->bytes_per_sector == 0) return 0;
+	if (dbr->sectors_per_cluster == 0) return 0;
+	if (dbr->reserved_sector_count == 0) return 0;
+	if (dbr->num_FATs == 0) return 0;
+	if (dbr->jump_boot[0] != 0xEB && dbr->jump_boot[0] != 0xE9) return 0;
+	return 1;
+}
+
+static PhatBool_t Phat_IsSectorMBR(const Phat_MBR_p mbr)
+{
+	if (Phat_IsSectorDBR((Phat_DBR_p)mbr)) return 0;
+	if (mbr->boot_signature != 0xAA55) return 0;
+	for (size_t i = 0; i < 4; i++)
+	{
+		Phat_MBR_Entry_p e = &mbr->partition_entries[i];
+		if (e->boot_indicator != 0 && e->boot_indicator != 0x80) return 0;
+	}
+	return 1;
+}
+
 PhatState Phat_Init(Phat_p phat)
 {
 	memset(phat, 0, sizeof * phat);

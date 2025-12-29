@@ -2,6 +2,10 @@
 
 #include <string.h>
 
+#ifndef UNUSED(x)
+#define UNUSED(x) ((void)(x))
+#endif
+
 #pragma pack(push, 1)
 typedef struct Phat_MBR_Entry_s
 {

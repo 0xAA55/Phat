@@ -37,7 +37,7 @@ static void ShowLastError(const char* performing)
 __weak PhatBool_t BSP_OpenDevice(void *userdata)
 {
 	BSP_CloseDevice(userdata);
-	hDevice = CreateFileW(BSP_DeviceFilePath, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+	hDevice = CreateFileW(BSP_DeviceFilePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 	if (hDevice == INVALID_HANDLE_VALUE)
 	{
 		ShowLastError("CreateFileW()");

@@ -661,6 +661,56 @@ static WChar_p Phat_ToEndOfString(WChar_p string)
 	return string;
 }
 
+void Phat_NormalizePath(WChar_p path)
+{
+	WChar_p read_ptr;
+	WChar_p write_ptr;
+	WChar_p start_ptr;
+	size_t length;
+	read_ptr = path;
+	write_ptr = path;
+	while (*read_ptr == '/' || *read_ptr == '\\') read_ptr++;
+	start_ptr = read_ptr;
+	while (*read_ptr)
+	{
+		if (*read_ptr == L'/' || *read_ptr == L'\\')
+		{
+			length = (size_t)(read_ptr - start_ptr);
+			if (length == 1 && start_ptr[0] == L'.')
+			{
+				start_ptr = read_ptr + 1;
+				*write_ptr = L'\0';
+			}
+			else if (length == 2 && start_ptr[0] == L'.' && start_ptr[1] == L'.')
+			{
+				*start_ptr = L'\0';
+				Phat_ToUpperDirectoryPath(path);
+				write_ptr = Phat_ToEndOfString(path);
+				start_ptr = read_ptr + 1;
+			}
+			else if (length)
+			{
+				while (start_ptr < read_ptr)
+				{
+					*write_ptr++ = *start_ptr++;
+				}
+				*write_ptr++ = L'/';
+				start_ptr = read_ptr + 1;
+			}
+			else
+			{
+				start_ptr = read_ptr + 1;
+			}
+		}
+		read_ptr++;
+	}
+	*write_ptr = L'\0';
+	if (write_ptr > path && (*(write_ptr - 1) == L'/' || *(write_ptr - 1) == L'\\'))
+	{
+		*(write_ptr - 1) = L'\0';
+	}
+}
+
 PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 {
 	LBA_t cur_dir_sector = phat->root_dir_start_LBA;

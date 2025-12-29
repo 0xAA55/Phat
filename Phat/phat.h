@@ -13,6 +13,10 @@
 #define SECTORCACHE_VALID 0x40000000
 #define SECTORCACHE_AGE_BM 0x3FFFFFFF
 
+#ifndef MAX_LFN
+#define MAX_LFN 256
+#endif
+
 typedef uint16_t WChar_t, *WChar_p;
 
 typedef struct Phat_SectorCache_s
@@ -70,7 +74,7 @@ typedef struct Phat_DirInfo_s
 	Phat_Date_t adate;
 	uint32_t file_size;
 	uint32_t first_cluster;
-	WChar_t LFN_name[256];
+	WChar_t LFN_name[MAX_LFN];
 	uint16_t LFN_length;
 }Phat_DirInfo_t, *Phat_DirInfo_p;
 

@@ -542,19 +542,34 @@ PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 {
 	PhatState ret = PhatState_OK;
 	Phat_DirItem_t diritem;
+	Phat_LFN_Entry_p lfnitem;
+	PhatBool_t no_checksum = 1;
+	uint8_t checksum;
 	for (;;)
 	{
 		ret = Phat_GetDirItem(phat, dir_info, &diritem);
 		if (ret != PhatState_OK) return ret;
 		if (Phat_IsValidLFNEntry(&diritem))
 		{
-			Phat_SuckLFNIntoBuffer((Phat_LFN_Entry_p)&diritem, dir_info);
+			lfnitem = (Phat_LFN_Entry_p)&diritem;
+			if (no_checksum)
+			{
+				no_checksum = 0;
+				dir_info->checksum = lfnitem->checksum;
+			}
+			else if (lfnitem->checksum != dir_info->checksum)
+			{
+				dir_info->checksum = lfnitem->checksum;
+				dir_info->LFN_length = 0;
+			}
+			Phat_SuckLFNIntoBuffer(lfnitem, dir_info);
 			ret = Phat_MoveToNextDirItem(phat, dir_info);
 			if (ret != PhatState_OK) return ret;
 		}
 		else if (diritem.file_name_8_3[0] == 0xE5)
 		{
 			dir_info->LFN_length = 0;
+			no_checksum = 1;
 			ret = Phat_MoveToNextDirItem(phat, dir_info);
 			if (ret != PhatState_OK) return ret;
 		}
@@ -565,6 +580,11 @@ PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 		}
 		else
 		{
+			checksum = Phat_LFN_ChkSum(diritem.file_name_8_3);
+			if (!no_checksum && checksum != dir_info->checksum)
+			{
+				dir_info->LFN_length = 0;
+			}
 			memcpy(dir_info->file_name_8_3, diritem.file_name_8_3, 11);
 			dir_info->attributes = diritem.attributes;
 			dir_info->ctime = Phat_ParseTime(diritem.creation_time, diritem.creation_time_tenths);
@@ -653,6 +673,15 @@ PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 				else if (ret != PhatState_OK)
 				{
 					return ret;
+				}
+				if (!memcmp(dir_info->LFN_name, name_start, name_len * sizeof(WChar_t)) && dir_info->LFN_name[name_len] == L'\0')
+				{
+					if ((dir_info->attributes & ATTRIB_DIRECTORY) == 0)
+					{
+						return PhatState_NotADirectory;
+					}
+					cur_dir_cluster = dir_info->first_cluster;
+					break;
 				}
 			}
 		}

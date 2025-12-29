@@ -431,3 +431,27 @@ static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint3
 	*next_cluster = cluster_number;
 	return PhatState_OK;
 }
+
+static Phat_Time_t Phat_ParseTime(uint16_t time, uint8_t tenths)
+{
+	Phat_Time_t t =
+	{
+		(time >> 11) & 0x1F,
+		(time >> 5) & 0x3F,
+		(time & 0x1F) * 2,
+		(tenths & 0x3F) * 10,
+	};
+	return t;
+}
+
+static Phat_Date_t Phat_ParseDate(uint16_t date)
+{
+	Phat_Date_t d =
+	{
+		((date >> 9) & 0x7F) + 1980,
+		(date >> 5) & 0x0F,
+		date & 0x1F,
+	};
+	return d;
+}
+

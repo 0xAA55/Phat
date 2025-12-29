@@ -53,6 +53,7 @@ __weak PhatBool_t BSP_CloseDevice(void *userdata)
 		CloseHandle(hDevice);
 		hDevice = INVALID_HANDLE_VALUE;
 	}
+	return 1;
 }
 
 __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)

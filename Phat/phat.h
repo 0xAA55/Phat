@@ -23,16 +23,16 @@ typedef struct Phat_SectorCache_s
 typedef struct Phat_s
 {
 	Phat_SectorCache_t cache[PHAT_CACHED_SECTORS];
-	uint32_t LRU_age;
 	Phat_Disk_Driver_t driver;
+	uint32_t LRU_age;
 	LBA_t partition_start_LBA;
 	LBA_t total_sectors;
-	uint8_t FAT_bits;
-	uint8_t num_FATs;
 	LBA_t FAT_size_in_sectors;
 	LBA_t FAT1_start_LBA;
 	LBA_t root_dir_start_LBA;
 	LBA_t data_start_LBA;
+	uint8_t FAT_bits;
+	uint8_t num_FATs;
 	uint16_t bytes_per_sector;
 	uint8_t sectors_per_cluster;
 }Phat_t, *Phat_p;

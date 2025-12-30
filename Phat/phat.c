@@ -240,6 +240,16 @@ static void Phat_SetCachedSectorModified(Phat_SectorCache_p p_cached_sector)
 	Phat_SetCachedSectorUnsync(p_cached_sector);
 }
 
+static PhatState Phat_WriteSectorThroughCache(Phat_p phat, LBA_t LBA, const void *buffer)
+{
+	Phat_SectorCache_p cached_sector;
+	PhatState ret = Phat_ReadSectorThroughCache(phat, LBA, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+	memcpy(cached_sector->data, buffer, 512);
+	Phat_SetCachedSectorModified(cached_sector);
+	return PhatState_OK;
+}
+
 static PhatState Phat_ReadSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, void *buffer)
 {
 	if (phat->driver.fn_read_sector(buffer, LBA, num_sectors, phat->driver.userdata))

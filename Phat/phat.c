@@ -337,7 +337,7 @@ PhatState Phat_Init(Phat_p phat)
 	return PhatState_OK;
 }
 
-static PhatState Phat_SeekForFreeCluster(Phat_p phat, uint32_t from_index, uint32_t *cluster_out)
+static PhatState Phat_SearchForFreeCluster(Phat_p phat, uint32_t from_index, uint32_t *cluster_out)
 {
 	PhatState ret;
 	uint32_t cluster;
@@ -367,6 +367,11 @@ static PhatState Phat_SumFreeClusters(Phat_p phat, uint32_t *num_free_clusters_o
 	}
 	*num_free_clusters_out = sum;
 	return PhatState_OK;
+}
+
+static PhatState Phat_SeekForFreeCluster(Phat_p phat, uint32_t *cluster_out)
+{
+	return Phat_SearchForFreeCluster(phat, phat->next_free_cluster - 2, cluster_out);
 }
 
 PhatState Phat_Mount(Phat_p phat, int partition_index)
@@ -432,7 +437,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	else
 	{
 		phat->has_FSInfo = 0;
-		ret = Phat_SeekForFreeCluster(phat, 0, &phat->next_free_cluster);
+		ret = Phat_SearchForFreeCluster(phat, 0, &phat->next_free_cluster);
 		if (ret != PhatState_OK) phat->next_free_cluster = 2;
 		ret = Phat_SumFreeClusters(phat, &phat->free_clusters);
 		if (ret != PhatState_OK) phat->free_clusters = 0;

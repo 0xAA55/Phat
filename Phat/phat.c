@@ -872,3 +872,13 @@ static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info)
 	return PhatState_OK;
 }
 
+static PhatState Phat_GetCurFilePointerLBA(Phat_FileInfo_p file_info, LBA_p LBA_out)
+{
+	uint32_t offset_in_cluster;
+	PhatState ret = Phat_UpdateClusterByFilePointer(file_info);
+	if (ret != PhatState_OK) return ret;
+	offset_in_cluster = (file_info->file_pointer / file_info->phat->bytes_per_sector) % file_info->phat->sectors_per_cluster;
+	*LBA_out = Phat_ClusterToLBA(file_info->phat, file_info->cur_cluster) + offset_in_cluster + file_info->phat->partition_start_LBA;
+	return PhatState_OK;
+}
+

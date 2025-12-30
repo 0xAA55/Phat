@@ -1646,6 +1646,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	size_t sectors_to_read;
 
 	*bytes_read = 0;
+	if (file_info->first_cluster == 0) return PhatState_EndOfFile;
 	if (file_info->file_pointer >= file_info->file_size) return PhatState_EndOfFile;
 	if (file_info->file_pointer + bytes_to_read > file_info->file_size)
 		bytes_to_read = file_info->file_size - file_info->file_pointer;

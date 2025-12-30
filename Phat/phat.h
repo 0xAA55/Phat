@@ -114,6 +114,7 @@ typedef enum PhatState_e
 	PhatState_EndOfDirectory,
 	PhatState_EndOfFATChain,
 	PhatState_EndOfFile,
+	PhatState_NotEnoughSpace,
 }PhatState;
 
 #define ATTRIB_READ_ONLY 0x01

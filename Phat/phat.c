@@ -301,6 +301,38 @@ PhatState Phat_Init(Phat_p phat)
 	return PhatState_OK;
 }
 
+static PhatState Phat_SeekForFreeCluster(Phat_p phat, uint32_t from_index, uint32_t *cluster_out)
+{
+	PhatState ret;
+	uint32_t cluster;
+	for (uint32_t i = from_index; i < phat->num_FAT_entries; i++)
+	{
+		ret = Phat_ReadFAT(phat, i, &cluster);
+		if (ret != PhatState_OK) return ret;
+		if (!cluster)
+		{
+			*cluster_out = i + 2;
+			return PhatState_OK;
+		}
+	}
+	return PhatState_NotEnoughSpace;
+}
+
+static PhatState Phat_SumFreeClusters(Phat_p phat, uint32_t *num_free_clusters_out)
+{
+	PhatState ret;
+	uint32_t cluster;
+	uint32_t sum = 0;
+	for (uint32_t i = 0; i < phat->num_FAT_entries; i++)
+	{
+		ret = Phat_ReadFAT(phat, i, &cluster);
+		if (ret != PhatState_OK) return ret;
+		if (!cluster) sum++;
+	}
+	*num_free_clusters_out = sum;
+	return PhatState_OK;
+}
+
 PhatState Phat_Mount(Phat_p phat, int partition_index)
 {
 	LBA_t partition_start_LBA = 0;

@@ -199,7 +199,7 @@ static PhatState Phat_ReadSectorThroughCache(Phat_p phat, LBA_t LBA, Phat_Sector
 	{
 		Phat_SectorCache_p cached_sector = &phat->cache[i];
 		int MustDo = (i == PHAT_CACHED_SECTORS - 1);
-		if (MustDo || !Phat_IsCachedSectorValid(cached_sector) || Phat_GetCachedSectorAge(cached_sector) - phat->LRU_age >= PHAT_CACHED_SECTORS)
+		if (MustDo || !Phat_IsCachedSectorValid(cached_sector) || phat->LRU_age - Phat_GetCachedSectorAge(cached_sector) >= PHAT_CACHED_SECTORS)
 		{
 			ret = Phat_InvalidateCachedSector(phat, cached_sector);
 			if (ret != PhatState_OK) return ret;

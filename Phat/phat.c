@@ -500,6 +500,34 @@ void Phat_SetCurDateTime(Phat_p phat, Phat_Date_p cur_date, Phat_Time_p cur_time
 	phat->cur_time = *cur_time;
 }
 
+static PhatState Phat_WipeCluster(Phat_p phat, uint32_t cluster)
+{
+	PhatState ret;
+	static const uint8_t empty_sector[512] = { 0 };
+	LBA_t cluster_LBA = Phat_ClusterToLBA(phat, cluster) + phat->partition_start_LBA;
+	for (size_t i = 0; i < phat->sectors_per_cluster; i++)
+	{
+		LBA_t LBA = cluster_LBA + i;
+		PhatBool_t wiped = 0;
+		for (size_t c = 0; c < PHAT_CACHED_SECTORS; c++)
+		{
+			Phat_SectorCache_p cached_sector = &phat->cache[c];
+			if (Phat_IsCachedSectorValid(cached_sector) && cached_sector->LBA == LBA)
+			{
+				memset(cached_sector->data, 0, sizeof cached_sector->data);
+				Phat_SetCachedSectorModified(cached_sector);
+				wiped = 1;
+				break;
+			}
+		}
+		if (!wiped)
+		{
+			ret = Phat_WriteSectorsWithoutCache(phat, LBA, 1, empty_sector);
+			if (ret != PhatState_OK) return ret;
+		}
+	}
+}
+
 static PhatState Phat_ReadFAT(Phat_p phat, uint32_t cluster_index, uint32_t *read_out)
 {
 	PhatState ret = PhatState_OK;

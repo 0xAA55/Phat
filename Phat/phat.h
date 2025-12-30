@@ -35,8 +35,9 @@ typedef struct Phat_s
 	LBA_t total_sectors;
 	LBA_t FAT_size_in_sectors;
 	LBA_t FAT1_start_LBA;
-	LBA_t root_dir_start_LBA;
+	LBA_t root_dir_cluster;
 	LBA_t data_start_LBA;
+	LBA_t root_dir_start_LBA;
 	uint8_t FAT_bits;
 	uint8_t num_FATs;
 	uint16_t bytes_per_sector;

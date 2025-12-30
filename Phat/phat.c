@@ -847,3 +847,28 @@ PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_Fil
 	return ret;
 }
 
+static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info)
+{
+	PhatState ret = PhatState_OK;
+	Phat_p phat = file_info->phat;
+	uint32_t cluster_index;
+	uint32_t next_cluster;
+	cluster_index = file_info->file_pointer / phat->sectors_per_cluster;
+	if (file_info->cur_cluster_index > cluster_index)
+	{
+		file_info->cur_cluster_index = 0;
+		file_info->cur_cluster = file_info->first_cluster;
+	}
+	while (file_info->cur_cluster_index < cluster_index)
+	{
+		ret = Phat_GetFATNextCluster(phat, file_info->cur_cluster, &next_cluster);
+		if (ret == PhatState_EndOfFATChain)
+			return PhatState_FATError;
+		else if (ret != PhatState_OK)
+			return ret;
+		file_info->cur_cluster_index++;
+		file_info->cur_cluster = next_cluster;
+	}
+	return PhatState_OK;
+}
+

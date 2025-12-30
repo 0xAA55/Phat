@@ -4,6 +4,11 @@
 
 Phat is a FAT filesystem API designed for embedded systems and cross-platform development.
 
+* No dynamic memory allocation is used.
+* Filenames and directories are encoded in UTF-16.
+* The default code page is 437 (OEM United States).
+* Includes an LRU (Least Recently Used) sector cache.
+
 ## Usage
 
 First, review `BSP_phat.c` and `BSP_phat.h`. These files provide the low-level driver implementation that allows the PHAT API to access the storage device.

@@ -612,6 +612,33 @@ static PhatState Phat_WriteFAT(Phat_p phat, uint32_t cluster_index, uint32_t wri
 	return PhatState_OK;
 }
 
+static PhatState Phat_AllocateCluster(Phat_p phat, uint32_t *allocated_cluster)
+{
+	PhatState ret;
+	uint32_t free_cluster;
+	ret = Phat_SeekForFreeCluster(phat, &free_cluster);
+	if (ret != PhatState_OK) return ret;
+	ret = Phat_WriteFAT(phat, free_cluster, 0x0FFFFFFF);
+	if (ret != PhatState_OK) return ret;
+	*allocated_cluster = free_cluster;
+	if (phat->has_FSInfo)
+	{
+		if (free_cluster == phat->next_free_cluster)
+		{
+			ret = Phat_SearchForFreeCluster(phat, free_cluster - 2 + 1, &phat->next_free_cluster);
+			if (ret != PhatState_OK)
+			{
+				phat->next_free_cluster = 2;
+			}
+		}
+		if (phat->free_clusters > 0)
+			phat->free_clusters--;
+		ret = Phat_UpdateFSInfo(phat);
+		if (ret != PhatState_OK) return ret;
+	}
+	return PhatState_OK;
+}
+
 static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint32_t *next_cluster)
 {
 	PhatState ret = PhatState_OK;

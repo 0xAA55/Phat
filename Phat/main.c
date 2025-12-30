@@ -17,8 +17,8 @@ int main()
 	Phat_DirInfo_t dir_info;
 	WChar_t path[256] = L"";
 	PhatState res = PhatState_OK;
-	V(Phat_Init(&phat));
 
+	V(Phat_Init(&phat));
 	V(Phat_Mount(&phat, 0));
 
 	V(Phat_OpenDir(&phat, path, &dir_info));
@@ -31,8 +31,9 @@ int main()
 		else
 			printf("File: %S\n", dir_info.LFN_name);
 	}
-	V(Phat_CloseDir(&dir_info));
+	Phat_CloseDir(&dir_info);
 
+	V(Phat_Unmount(&phat));
 	V(Phat_DeInit(&phat));
 	return 0;
 }

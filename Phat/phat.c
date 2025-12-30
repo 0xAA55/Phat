@@ -916,20 +916,14 @@ static PhatState Phat_MoveToNextDirItemWithAllocation(Phat_DirInfo_p dir_info)
 		else if (ret == PhatState_EndOfFATChain)
 		{
 			Phat_SectorCache_p cached_sector;
-			LBA_t cluster_LBA = Phat_ClusterToLBA(phat, next_cluster) + phat->partition_start_LBA;
 			ret = Phat_AllocateCluster(phat, &next_cluster);
 			if (ret != PhatState_OK) return ret;
 			ret = Phat_WriteFAT(phat, dir_info->dir_current_cluster - 2, next_cluster);
 			if (ret != PhatState_OK) return ret;
 			dir_info->cur_diritem_in_cur_cluster = 0;
 			dir_info->dir_current_cluster = next_cluster;
-			for (size_t i = 0; i < phat->sectors_per_cluster; i++)
-			{
-				ret = Phat_ReadSectorThroughCache(phat, cluster_LBA + i, &cached_sector);
-				if (ret != PhatState_OK) return ret;
-				memset(cached_sector->data, 0, sizeof cached_sector->data);
-				Phat_SetCachedSectorModified(cached_sector);
-			}
+			ret = Phat_WipeCluster(phat, next_cluster);
+			if (ret != PhatState_OK) return ret;
 			return PhatState_OK;
 		}
 		else

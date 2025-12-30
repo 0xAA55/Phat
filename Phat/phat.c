@@ -620,9 +620,12 @@ PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 					if (!ch) break;
 					if (ch != ' ') copy_to = i;
 				}
-				for (size_t i = 0; i < copy_to; i++)
+				for (size_t i = 0; i <= copy_to; i++)
 				{
-					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(diritem.file_name_8_3[i]);
+					uint8_t ch = diritem.file_name_8_3[i];
+					if (diritem.case_info & CI_BASENAME_IS_LOWER)
+						ch = (ch >= 'A' && ch <= 'Z') ? (ch + 0x20) : ch;
+					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(ch);
 				}
 				if (diritem.file_name_8_3[8] != ' ')
 				{
@@ -634,12 +637,15 @@ PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 						if (ch != ' ') copy_to = i;
 					}
 				}
-				for (size_t i = 8; i < copy_to; i++)
+				for (size_t i = 8; i <= copy_to; i++)
 				{
-					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(diritem.file_name_8_3[i]);
+					uint8_t ch = diritem.file_name_8_3[i];
+					if (diritem.case_info & CI_EXTENSION_IS_LOWER)
+						ch = (ch >= 'A' && ch <= 'Z') ? (ch + 0x20) : ch;
+					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(ch);
 				}
-				dir_info->LFN_name[dir_info->LFN_length] = L'\0';
 			}
+			dir_info->LFN_name[dir_info->LFN_length] = L'\0';
 			Phat_MoveToNextDirItem(phat, dir_info);
 			return PhatState_OK;
 		}

@@ -1485,7 +1485,8 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	for (;;)
 	{
 		free_count = 0;
-		Phat_GetDirItem(&dir_info, &dir_item);
+		ret = Phat_GetDirItem(&dir_info, &dir_item);
+		if (ret != PhatState_OK) return ret;
 		if (dir_item.file_name_8_3[0] == 0x00 || dir_item.file_name_8_3[0] == 0xE5)
 		{
 			first_diritem = dir_info.cur_diritem_in_cur_cluster;

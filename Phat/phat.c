@@ -503,7 +503,7 @@ static void Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_p buf
 	}
 }
 
-static PhatBool_t Phat_IsValidLFNEntry(Phat_DirInfo_p lfn_item)
+static PhatBool_t Phat_IsValidLFNEntry(Phat_DirItem_p lfn_item)
 {
 	Phat_LFN_Entry_p lfne = (Phat_LFN_Entry_p)lfn_item;
 	if (lfne->attributes != ATTRIB_LFN) return 0;

@@ -325,7 +325,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	}
 
 	dbr = (Phat_DBR_p)cached_sector->data;
-	if (!Phat_IsSectorDBR(dbr)) return PhatState_PartitionError;
+	if (!Phat_IsSectorDBR(dbr)) return PhatState_FSNotFat;
 	if (!memcmp(dbr->file_system_type, "FAT12   ", 8))
 		phat->FAT_bits = 12;
 	else if (!memcmp(dbr->file_system_type, "FAT16   ", 8))
@@ -333,7 +333,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	else if (!memcmp(dbr->file_system_type, "FAT32   ", 8))
 		phat->FAT_bits = 32;
 	else
-		return PhatState_PartitionError;
+		return PhatState_FSNotFat;
 	phat->FAT_size_in_sectors = (phat->FAT_bits == 32) ? dbr->FAT_size_32 : dbr->FAT_size_16;
 	end_of_FAT_LBA = dbr->reserved_sector_count + (LBA_t)dbr->num_FATs * phat->FAT_size_in_sectors;
 	phat->partition_start_LBA = partition_start_LBA;

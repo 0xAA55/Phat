@@ -1405,6 +1405,142 @@ static PhatState Phat_Gen83NameForLongFilename(Phat_p phat, WChar_p filename, ui
 	}
 }
 
+static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attrib)
+{
+	Phat_DirInfo_t dir_info;
+	PhatState ret = PhatState_OK;
+	WChar_t longname[MAX_LFN];
+	uint8_t name83[11];
+	uint8_t case_info = 0;
+	int only83 = 0;
+	uint32_t fnlen = 0;
+	uint32_t items_needed;
+	uint32_t first_diritem = 0;
+	uint32_t first_diritem_in_cluster = 0;
+	uint32_t free_count = 0;
+	Phat_DirItem_t dir_item;
+
+	Phat_PathToName(path, longname);
+	if (!Phat_IsValidFilename(path)) return PhatState_InvalidParameter;
+	while (longname[fnlen]) fnlen++;
+	if (Phat_IsFit83(path, name83, &case_info))
+	{
+		only83 = 1;
+		items_needed = 1;
+	}
+	else
+	{
+		ret = Phat_Gen83NameForLongFilename(phat, path, name83);
+		if (ret != PhatState_OK) return ret;
+		items_needed = 1 + ((fnlen + 12) / 13);
+	}
+
+	ret = Phat_OpenDir(phat, path, &dir_info);
+	if (ret != PhatState_OK) return ret;
+	for (;;)
+	{
+		free_count = 0;
+		Phat_GetDirItem(&dir_info, &dir_item);
+		if (dir_item.file_name_8_3[0] == 0x00 || dir_item.file_name_8_3[0] == 0xE5)
+		{
+			first_diritem = dir_info.cur_diritem_in_cur_cluster;
+			first_diritem_in_cluster = dir_info.dir_current_cluster;
+			free_count = 1;
+			ret = Phat_MoveToNextDirItemWithAllocation(&dir_info);
+			if (ret != PhatState_OK) return ret;
+			while (free_count < items_needed)
+			{
+				ret = Phat_GetDirItem(&dir_info, &dir_item);
+				if (ret != PhatState_OK) return ret;
+				if (dir_item.file_name_8_3[0] == 0x00 || dir_item.file_name_8_3[0] == 0xE5)
+				{
+					free_count++;
+					if (free_count == items_needed)
+						break;
+					ret = Phat_MoveToNextDirItemWithAllocation(&dir_info);
+					if (ret != PhatState_OK) return ret;
+				}
+				else
+				{
+					break;
+				}
+			}
+			if (free_count == items_needed)
+				break;
+		}
+		else
+		{
+			ret = Phat_MoveToNextDirItemWithAllocation(&dir_info);
+			if (ret != PhatState_OK) return ret;
+		}
+		if (free_count == items_needed)
+			break;
+	}
+	Phat_CloseDir(&dir_info);
+	ret = Phat_OpenDir(phat, path, &dir_info);
+	if (ret != PhatState_OK) return ret;
+	while (dir_info.cur_diritem_in_cur_cluster != first_diritem || dir_info.dir_current_cluster != first_diritem_in_cluster)
+	{
+		Phat_MoveToNextDirItem(&dir_info);
+	}
+	if (!only83)
+	{
+		uint8_t checksum = Phat_LFN_ChkSum(name83);
+		uint8_t lfn_entries_needed = (uint8_t)(items_needed - 1);
+		for (uint8_t i = lfn_entries_needed; i > 0; i--)
+		{
+			Phat_LFN_Entry_t lfn_entry;
+			size_t copy_len = 13;
+			size_t offset = (size_t)(i - 1) * 13;
+			if (fnlen - offset < 13) copy_len = fnlen - offset;
+			memset(&lfn_entry, 0, sizeof lfn_entry);
+			lfn_entry.order = i;
+			if (i == lfn_entries_needed) lfn_entry.order |= 0x40;
+			lfn_entry.attributes = ATTRIB_LFN;
+			lfn_entry.type = 0;
+			lfn_entry.first_cluster_low = 0;
+			lfn_entry.checksum = checksum;
+			for (size_t j = 0; j < copy_len; j++)
+			{
+				WChar_t ch = longname[offset + j];
+				if (j < 5)
+					lfn_entry.name1[j] = ch;
+				else if (j < 11)
+					lfn_entry.name2[j - 5] = ch;
+				else
+					lfn_entry.name3[j - 11] = ch;
+			}
+			ret = Phat_PutDirItem(&dir_info, (Phat_DirItem_p)&lfn_entry);
+			if (ret != PhatState_OK)
+			{
+				Phat_CloseDir(&dir_info);
+				return ret;
+			}
+			Phat_MoveToNextDirItem(&dir_info);
+		}
+	}
+	memset(&dir_item, 0, sizeof dir_item);
+	memcpy(dir_item.file_name_8_3, name83, 11);
+	dir_item.attributes = attrib;
+	dir_item.creation_date = Phat_EncodeDate(&phat->cur_date);
+	dir_item.creation_time = Phat_EncodeTime(&phat->cur_time);
+	dir_item.creation_time_tenths = 0;
+	dir_item.last_modification_date = Phat_EncodeDate(&phat->cur_date);
+	dir_item.last_modification_time = Phat_EncodeTime(&phat->cur_time);
+	dir_item.last_access_date = Phat_EncodeDate(&phat->cur_date);
+	dir_item.first_cluster_low = 0;
+	dir_item.first_cluster_high = 0;
+	dir_item.file_size = 0;
+	ret = Phat_PutDirItem(&dir_info, &dir_item);
+	if (ret != PhatState_OK)
+	{
+		Phat_CloseDir(&dir_info);
+		return ret;
+	}
+	Phat_CloseDir(&dir_info);
+	return PhatState_OK;
+}
+
 PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
 {
 	Phat_DirInfo_t dir_info;

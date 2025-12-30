@@ -301,6 +301,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 {
 	LBA_t partition_start_LBA = 0;
 	LBA_t total_sectors = 0;
+	LBA_t end_of_FAT_LBA;
 	PhatState ret = PhatState_OK;
 	Phat_SectorCache_p cached_sector;
 	Phat_MBR_p mbr;
@@ -331,12 +332,14 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 		phat->FAT_bits = 32;
 	else
 		return PhatState_PartitionError;
+	phat->FAT_size_in_sectors = (phat->FAT_bits == 32) ? dbr->FAT_size_32 : dbr->FAT_size_16;
+	end_of_FAT_LBA = dbr->reserved_sector_count + (LBA_t)dbr->num_FATs * phat->FAT_size_in_sectors;
 	phat->partition_start_LBA = partition_start_LBA;
 	phat->total_sectors = total_sectors;
 	phat->num_FATs = dbr->num_FATs;
-	phat->FAT_size_in_sectors = (phat->FAT_bits == 32) ? dbr->FAT_size_32 : dbr->FAT_size_16;
-	phat->FAT1_start_LBA = partition_start_LBA + dbr->reserved_sector_count;
-	phat->root_dir_start_LBA = (phat->FAT_bits == 32) ? (LBA_t)dbr->root_dir_cluster * dbr->sectors_per_cluster : (LBA_t)phat->FAT1_start_LBA + (LBA_t)phat->FAT_size_in_sectors * phat->num_FATs;
+	phat->FAT1_start_LBA = dbr->reserved_sector_count;
+	phat->root_dir_cluster = (phat->FAT_bits == 32) ? dbr->root_dir_cluster : 0;
+	phat->root_dir_start_LBA = end_of_FAT_LBA + ((phat->FAT_bits == 32) ? (LBA_t)(phat->root_dir_cluster - 2) * dbr->sectors_per_cluster : 0);
 	phat->data_start_LBA = phat->root_dir_start_LBA + ((phat->FAT_bits == 32) ? 0 : (LBA_t)((dbr->root_entry_count * 32) + (dbr->bytes_per_sector - 1)) / dbr->bytes_per_sector);
 	phat->bytes_per_sector = dbr->bytes_per_sector;
 	phat->sectors_per_cluster = dbr->sectors_per_cluster;
@@ -468,8 +471,12 @@ static PhatState Phat_GetDirItem(Phat_p phat, Phat_DirInfo_p dir_info, Phat_DirI
 	Phat_SectorCache_p cached_sector;
 	Phat_DirItem_p dir_items;
 
-	dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + dir_info->cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+	if (dir_info->dir_current_cluster >= 2)
+		dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + dir_info->cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+	else // Root directory in FAT12/16
+		dir_sector_LBA = phat->root_dir_start_LBA + dir_info->cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
 	item_index_in_sector = dir_info->cur_diritem_in_cur_cluster % phat->num_diritems_in_a_sector;
+	dir_sector_LBA += phat->partition_start_LBA;
 	ret = Phat_ReadSectorThroughCache(phat, dir_sector_LBA, &cached_sector);
 	if (ret != PhatState_OK) return ret;
 	dir_items = (Phat_DirItem_p)&cached_sector->data[0];
@@ -544,6 +551,8 @@ PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 	Phat_LFN_Entry_p lfnitem;
 	PhatBool_t no_checksum = 1;
 	uint8_t checksum;
+
+	dir_info->LFN_length = 0;
 	for (;;)
 	{
 		ret = Phat_GetDirItem(phat, dir_info, &diritem);
@@ -713,13 +722,15 @@ void Phat_NormalizePath(WChar_p path)
 PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {
 	LBA_t cur_dir_sector = phat->root_dir_start_LBA;
-	uint32_t cur_dir_cluster = 2;
+	uint32_t cur_dir_cluster = phat->root_dir_cluster;
 	WChar_p ptr = path;
 	WChar_p name_start;
 	size_t name_len;
 	PhatState ret = PhatState_OK;
 
 	Phat_NormalizePath(path);
+	memset(dir_info, 0, sizeof * dir_info);
+	dir_info->first_cluster = cur_dir_cluster;
 
 	for (;;)
 	{

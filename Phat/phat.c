@@ -1454,18 +1454,24 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	uint32_t first_diritem_in_cluster = 0;
 	uint32_t free_count = 0;
 	Phat_DirItem_t dir_item;
+	WChar_p ptr = Phat_ToEndOfString(path);
+	if (ptr > path && (*(ptr - 1) == L'/' || *(ptr - 1) == L'\\')) return PhatState_InvalidParameter;
+	if (ptr == path) return PhatState_InvalidParameter;
 
 	Phat_PathToName(path, longname);
 	if (!Phat_IsValidFilename(path)) return PhatState_InvalidParameter;
 	while (longname[fnlen]) fnlen++;
-	if (Phat_IsFit83(path, name83, &case_info))
+	while (ptr > path && *ptr != L'/' && *ptr != L'\\') ptr--;
+	*ptr = L'\0';
+
+	if (Phat_IsFit83(longname, name83, &case_info))
 	{
 		only83 = 1;
 		items_needed = 1;
 	}
 	else
 	{
-		ret = Phat_Gen83NameForLongFilename(phat, path, name83);
+		ret = Phat_Gen83NameForLongFilename(phat, longname, name83);
 		if (ret != PhatState_OK) return ret;
 		items_needed = 1 + ((fnlen + 12) / 13);
 	}
@@ -1778,3 +1784,9 @@ void Phat_CloseFile(Phat_FileInfo_p file_info)
 {
 	memset(file_info, 0, sizeof * file_info);
 }
+
+PhatState Phat_CreateDirectory(Phat_p phat, WChar_p path)
+{
+	return Phat_CreateNewItemInDir(phat, path, ATTRIB_DIRECTORY);
+}
+

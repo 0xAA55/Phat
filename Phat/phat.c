@@ -1472,6 +1472,16 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
+	if (dir_info.dir_start_cluster == 0)
+	{
+		uint32_t new_cluster;
+		ret = Phat_AllocateCluster(phat, &new_cluster);
+		if (ret != PhatState_OK) return ret;
+		dir_info.dir_start_cluster = new_cluster;
+		dir_info.dir_current_cluster = new_cluster;
+		ret = Phat_WipeCluster(phat, new_cluster);
+		if (ret != PhatState_OK) return ret;
+	}
 	for (;;)
 	{
 		free_count = 0;

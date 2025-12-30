@@ -26,10 +26,27 @@ typedef struct Phat_SectorCache_s
 	uint32_t usage;
 }Phat_SectorCache_t, *Phat_SectorCache_p;
 
+typedef struct Phat_Date_s
+{
+	uint16_t year;
+	uint8_t month;
+	uint8_t day;
+}Phat_Date_t, *Phat_Date_p;
+
+typedef struct Phat_Time_s
+{
+	uint8_t hours;
+	uint8_t minutes;
+	uint8_t seconds;
+	uint16_t milliseconds;
+}Phat_Time_t, *Phat_Time_p;
+
 typedef struct Phat_s
 {
 	Phat_SectorCache_t cache[PHAT_CACHED_SECTORS];
 	Phat_Disk_Driver_t driver;
+	Phat_Date_t cur_date;
+	Phat_Time_t cur_time;
 	uint32_t LRU_age;
 	LBA_t partition_start_LBA;
 	LBA_t total_sectors;
@@ -49,21 +66,6 @@ typedef struct Phat_s
 	uint32_t free_clusters;
 	uint32_t next_free_cluster;
 }Phat_t, *Phat_p;
-
-typedef struct Phat_Date_s
-{
-	uint16_t year;
-	uint8_t month;
-	uint8_t day;
-}Phat_Date_t, *Phat_Date_p;
-
-typedef struct Phat_Time_s
-{
-	uint8_t hours;
-	uint8_t minutes;
-	uint8_t seconds;
-	uint16_t milliseconds;
-}Phat_Time_t, *Phat_Time_p;
 
 typedef struct Phat_DirInfo_s
 {
@@ -137,6 +139,8 @@ void Phat_NormalizePath(WChar_p path);
 PhatState Phat_Mount(Phat_p phat, int partition_index);
 PhatState Phat_FlushCache(Phat_p phat);
 PhatState Phat_Unmount(Phat_p phat);
+void Phat_SetCurDateTime(Phat_p phat, Phat_Date_p cur_date, Phat_Time_p cur_time);
+
 PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info);
 PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
 void Phat_CloseDir(Phat_DirInfo_p dir_info);

@@ -446,6 +446,12 @@ PhatState Phat_DeInit(Phat_p phat)
 	return PhatState_OK;
 }
 
+void Phat_SetCurDateTime(Phat_p phat, Phat_Date_p cur_date, Phat_Time_p cur_time)
+{
+	phat->cur_date = *cur_date;
+	phat->cur_time = *cur_time;
+}
+
 static PhatState Phat_ReadFAT(Phat_p phat, uint32_t cluster_index, uint32_t *read_out)
 {
 	PhatState ret = PhatState_OK;

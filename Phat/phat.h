@@ -17,6 +17,30 @@
 #define MAX_LFN 256
 #endif
 
+#ifndef PHAT_DEFAULT_YEAR
+#define PHAT_DEFAULT_YEAR 2026
+#endif
+
+#ifndef PHAT_DEFAULT_MONTH
+#define PHAT_DEFAULT_MONTH 1
+#endif
+
+#ifndef PHAT_DEFAULT_DAY
+#define PHAT_DEFAULT_DAY 1
+#endif
+
+#ifndef PHAT_DEFAULT_HOUR
+#define PHAT_DEFAULT_HOUR 12
+#endif
+
+#ifndef PHAT_DEFAULT_MINUTE
+#define PHAT_DEFAULT_MINUTE 0
+#endif
+
+#ifndef PHAT_DEFAULT_SECOND
+#define PHAT_DEFAULT_SECOND 0
+#endif
+
 typedef uint16_t WChar_t, *WChar_p;
 
 typedef struct Phat_SectorCache_s

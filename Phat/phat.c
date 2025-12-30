@@ -316,9 +316,23 @@ static PhatBool_t Phat_IsSectorMBR(const Phat_MBR_p mbr)
 
 PhatState Phat_Init(Phat_p phat)
 {
+	Phat_Date_t default_date =
+	{
+		PHAT_DEFAULT_YEAR,
+		PHAT_DEFAULT_MONTH,
+		PHAT_DEFAULT_DAY,
+	};
+	Phat_Time_t default_time =
+	{
+		PHAT_DEFAULT_HOUR,
+		PHAT_DEFAULT_MINUTE,
+		PHAT_DEFAULT_SECOND,
+		0,
+	};
 	memset(phat, 0, sizeof * phat);
 	phat->driver = Phat_InitDriver(NULL);
 	if (!Phat_OpenDevice(&phat->driver)) return PhatState_DriverError;
+	Phat_SetCurDateTime(phat, &default_date, &default_time);
 	return PhatState_OK;
 }
 

@@ -93,6 +93,8 @@ typedef struct Phat_LFN_Entry_s
 #define CI_EXTENSION_IS_LOWER 0x08
 #define CI_BASENAME_IS_LOWER 0x10
 
+static PhatState Phat_ReadFAT(Phat_p phat, uint32_t cluster_index, uint32_t *read_out);
+
 static WChar_t Cp437_UpperPart[] =
 {
 	0x00c7, 0x00fc, 0x00e9, 0x00e2, 0x00e4, 0x00e0, 0x00e5, 0x00e7,
@@ -369,36 +371,36 @@ PhatState Phat_DeInit(Phat_p phat)
 	return PhatState_OK;
 }
 
-static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint32_t *next_cluster)
+static PhatState Phat_ReadFAT(Phat_p phat, uint32_t cluster_index, uint32_t *read_out)
 {
 	PhatState ret = PhatState_OK;
+	uint16_t raw_entry;
+	int half_cluster = 0;
 	uint32_t fat_offset;
 	LBA_t fat_sector_LBA;
-	int half_cluster = 0;
-	uint16_t raw_entry;
+	Phat_SectorCache_p cached_sector;
 	uint32_t cluster_number;
-	if (cur_cluster < 2) return PhatState_FATError;
-	cur_cluster -= 2;
+	size_t ent_offset_in_sector;
+
 	switch (phat->FAT_bits)
 	{
 	case 12:
-		half_cluster = cur_cluster & 1;
-		fat_offset = cur_cluster + (cur_cluster >> 1);
+		half_cluster = cluster_index & 1;
+		fat_offset = cluster_index + (cluster_index >> 1);
 		break;
 	case 16:
-		fat_offset = cur_cluster * 2;
+		fat_offset = cluster_index * 2;
 		break;
 	case 32:
-		fat_offset = cur_cluster * 4;
+		fat_offset = cluster_index * 4;
 		break;
 	default:
-		return 0;
+		return PhatState_InternalError;
 	}
 	fat_sector_LBA = phat->FAT1_start_LBA + (fat_offset / phat->bytes_per_sector);
-	Phat_SectorCache_p cached_sector;
 	ret = Phat_ReadSectorThroughCache(phat, fat_sector_LBA, &cached_sector);
 	if (ret != PhatState_OK) return ret;
-	size_t ent_offset_in_sector = fat_offset % phat->bytes_per_sector;
+	ent_offset_in_sector = fat_offset % phat->bytes_per_sector;
 	switch (phat->FAT_bits)
 	{
 	case 12:
@@ -407,18 +409,53 @@ static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint3
 			cluster_number = raw_entry & 0x0FFF;
 		else
 			cluster_number = (raw_entry >> 4) & 0x0FFF;
+		break;
+	case 16:
+		cluster_number = *(uint16_t *)&cached_sector->data[ent_offset_in_sector];
+		break;
+	case 32:
+		cluster_number = *(uint32_t *)&cached_sector->data[ent_offset_in_sector];
+		break;
+	}
+	*read_out = cluster_number;
+	return PhatState_OK;
+}
+
+static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint32_t *next_cluster)
+{
+	PhatState ret = PhatState_OK;
+	uint32_t cluster_number;
+	if (cur_cluster < 2) return PhatState_InvalidParameter;
+	switch (phat->FAT_bits)
+	{
+	case 12:
+		if (cur_cluster >= 0xFF0) return PhatState_InvalidParameter;
+		break;
+	case 16:
+		if (cur_cluster >= 0xFFF0) return PhatState_InvalidParameter;
+		break;
+	case 32:
+		if (cur_cluster >= 0x0FFFFFF0) return PhatState_InvalidParameter;
+		break;
+	default:
+		return PhatState_InternalError;
+	}
+	cur_cluster -= 2;
+	ret = Phat_ReadFAT(phat, cur_cluster, &cluster_number);
+	if (ret != PhatState_OK) return ret;
+	switch (phat->FAT_bits)
+	{
+	case 12:
 		if (cluster_number >= 0xFF8) return PhatState_EndOfFATChain;
 		if (cluster_number >= 0xFF0) return PhatState_FATError;
 		if (cluster_number < 2) return PhatState_FATError;
 		break;
 	case 16:
-		cluster_number = *(uint16_t *)&cached_sector->data[ent_offset_in_sector];
 		if (cluster_number >= 0xFFF8) return PhatState_EndOfFATChain;
 		if (cluster_number >= 0xFFF0) return PhatState_FATError;
 		if (cluster_number < 2) return PhatState_FATError;
 		break;
 	case 32:
-		cluster_number = *(uint32_t *)&cached_sector->data[ent_offset_in_sector];
 		if (cluster_number >= 0x0FFFFFF8) return PhatState_EndOfFATChain;
 		if (cluster_number >= 0x0FFFFFF0) return PhatState_FATError;
 		if (cluster_number < 2) return PhatState_FATError;

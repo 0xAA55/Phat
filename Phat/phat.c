@@ -854,6 +854,43 @@ void Phat_NormalizePath(WChar_p path)
 	}
 }
 
+void Phat_PathToName(WChar_p path)
+{
+	WChar_p chr = Phat_ToEndOfString(path);
+	size_t length = 0;
+	while (chr > path)
+	{
+		if (*chr == L'/' || *chr == L'\\')
+			*chr-- = L'\0';
+		else
+			break;
+	}
+	while (chr > path)
+	{
+		if (*chr != L'/' && *chr != L'\\')
+		{
+			chr--;
+			length++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	if (*chr == L'/' || *chr == L'\\')
+	{
+		chr++;
+		length--;
+	}
+	if (chr > path)
+	{
+		for (size_t i = 0; i <= length; i++)
+		{
+			path[i] = chr[i];
+		}
+	}
+}
+
 PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {
 	LBA_t cur_dir_sector = phat->root_dir_start_LBA;

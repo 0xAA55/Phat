@@ -656,6 +656,29 @@ static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem_p dir_ite
 	return PhatState_OK;
 }
 
+static PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_DirItem_p dir_item)
+{
+	PhatState ret = PhatState_OK;
+	LBA_t dir_sector_LBA;
+	uint32_t item_index_in_sector;
+	Phat_SectorCache_p cached_sector;
+	Phat_DirItem_p dir_items;
+	Phat_p phat = dir_info->phat;
+
+	if (dir_info->dir_current_cluster >= 2)
+		dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + dir_info->cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+	else // Root directory in FAT12/16
+		dir_sector_LBA = phat->root_dir_start_LBA + dir_info->cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+	item_index_in_sector = dir_info->cur_diritem_in_cur_cluster % phat->num_diritems_in_a_sector;
+	dir_sector_LBA += phat->partition_start_LBA;
+	ret = Phat_ReadSectorThroughCache(phat, dir_sector_LBA, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+	dir_items = (Phat_DirItem_p)&cached_sector->data[0];
+	dir_items[item_index_in_sector] = *dir_item;
+	Phat_SetCachedSectorModified(cached_sector);
+	return PhatState_OK;
+}
+
 static PhatState Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_p buffer)
 {
 	uint8_t order = lfn_item->order & 0x3F;

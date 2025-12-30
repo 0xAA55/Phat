@@ -600,6 +600,33 @@ static Phat_Date_t Phat_ParseDate(uint16_t date)
 	return d;
 }
 
+static uint16_t Phat_EncodeTime(Phat_Time_p time)
+{
+	uint16_t raw_time = 0;
+	if (time->hours > 23) time->hours = 23;
+	if (time->minutes > 59) time->minutes = 59;
+	if (time->seconds > 59) time->seconds = 59;
+	raw_time |= (time->hours & 0x1F) << 11;
+	raw_time |= (time->minutes & 0x3F) << 5;
+	raw_time |= (time->seconds / 2) & 0x1F;
+	return raw_time;
+}
+
+static uint16_t Phat_EncodeDate(Phat_Date_p date)
+{
+	uint16_t raw_date = 0;
+	if (date->year < 1980) date->year = 1980;
+	if (date->year > 2107) date->year = 2107;
+	if (date->month < 1) date->month = 1;
+	if (date->month > 12) date->month = 12;
+	if (date->day < 1) date->day = 1;
+	if (date->day > 31) date->day = 31;
+	raw_date |= ((date->year - 1980) & 0x7F) << 9;
+	raw_date |= (date->month & 0x0F) << 5;
+	raw_date |= date->day & 0x1F;
+	return raw_date;
+}
+
 static uint8_t Phat_LFN_ChkSum(uint8_t *file_name_8_3)
 {
 	uint8_t sum = 0;

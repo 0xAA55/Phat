@@ -946,3 +946,33 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	}
 	return file_info->file_pointer >= file_info->file_size ? PhatState_EndOfFile : PhatState_OK;
 }
+
+PhatState Phat_SeekFile(Phat_FileInfo_p file_info, uint32_t position)
+{
+	PhatState ret;
+	if (position > file_info->file_size)
+	{
+		position = file_info->file_size;
+		file_info->file_pointer = position;
+		ret = Phat_UpdateClusterByFilePointer(file_info);
+		if (ret != PhatState_OK) return ret;
+		return PhatState_EndOfFile;
+	}
+	file_info->file_pointer = position;
+	return Phat_UpdateClusterByFilePointer(file_info);
+}
+
+void Phat_GetFilePointer(Phat_FileInfo_p file_info, uint32_t *position)
+{
+	*position = file_info->file_pointer;
+}
+
+void Phat_GetFileSize(Phat_FileInfo_p file_info, uint32_t *size)
+{
+	*size = file_info->file_size;
+}
+
+void Phat_CloseFile(Phat_FileInfo_p file_info)
+{
+	memset(file_info, 0, sizeof * file_info);
+}

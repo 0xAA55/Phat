@@ -190,7 +190,6 @@ static PhatState Phat_ReadSectorThroughCache(Phat_p phat, LBA_t LBA, Phat_Sector
 		Phat_SectorCache_p cached_sector = &phat->cache[i];
 		if (Phat_IsCachedSectorValid(cached_sector) && phat->cache[i].LBA == LBA)
 		{
-			Phat_SetCachedSectorUnsync(cached_sector);
 			*pp_cached_sector = cached_sector;
 			return PhatState_OK;
 		}

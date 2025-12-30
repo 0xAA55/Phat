@@ -1033,6 +1033,26 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 	}
 }
 
+PhatBool_t Phat_IsValidFilename(WChar_p filename)
+{
+	size_t length = 0;
+	while (filename[length]) length++;
+	if (length == 0 || length >= MAX_LFN) return 0;
+	for (size_t i = 0; i < length; i++)
+	{
+		WChar_t ch = filename[i];
+		if (ch == L'\"' || ch == L'*' || ch == L'/' || ch == L':' ||
+			ch == L'<' || ch == L'>' || ch == L'?' || ch == L'\\' ||
+			ch == L'|' || ch < 0x0020)
+		{
+			return 0;
+		}
+	}
+	if (length == 1 && filename[0] == L'.') return 0;
+	if (length == 2 && filename[0] == L'.' && filename[1] == L'.') return 0;
+	return 1;
+}
+
 PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
 {
 	Phat_DirInfo_t dir_info;

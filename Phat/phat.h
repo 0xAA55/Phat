@@ -81,6 +81,19 @@ typedef struct Phat_DirInfo_s
 	uint16_t LFN_length;
 }Phat_DirInfo_t, *Phat_DirInfo_p;
 
+typedef struct Phat_FileInfo_s
+{
+	Phat_p phat;
+	uint32_t first_cluster;
+	uint32_t file_pointer;
+	uint32_t cur_cluster;
+	uint32_t cur_cluster_index;
+	uint32_t file_size;
+	PhatBool_t readonly;
+	uint8_t sector_buffer[512];
+	LBA_t buffer_LBA;
+}Phat_FileInfo_t, *Phat_FileInfo_p;
+
 typedef enum PhatState_e
 {
 	PhatState_OK = 0,
@@ -95,6 +108,7 @@ typedef enum PhatState_e
 	PhatState_FSError,
 	PhatState_DirectoryNotFound,
 	PhatState_FileNotFound,
+	PhatState_IsADirectory,
 	PhatState_NotADirectory,
 	PhatState_InvalidPath,
 	PhatState_EndOfDirectory,
@@ -119,4 +133,5 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info);
 PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
 void Phat_CloseDir(Phat_DirInfo_p dir_info);
 
+PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
 #endif

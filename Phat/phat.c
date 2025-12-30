@@ -794,3 +794,56 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 		}
 	}
 }
+
+PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
+{
+	Phat_DirInfo_t dir_info;
+	PhatState ret = PhatState_OK;
+
+	ret = Phat_OpenDir(phat, path, &dir_info);
+	if (ret != PhatState_OK) return ret;
+	for (;;)
+	{
+		ret = Phat_NextDirItem(&dir_info);
+		if (ret == PhatState_EndOfDirectory)
+		{
+			Phat_CloseDir(&dir_info);
+			return PhatState_FileNotFound;
+		}
+		else if (ret != PhatState_OK)
+		{
+			Phat_CloseDir(&dir_info);
+			return ret;
+		}
+
+		if (!memcmp(dir_info.LFN_name, Phat_ToEndOfString(path) - dir_info.LFN_length, dir_info.LFN_length) && dir_info.LFN_length == (size_t)(Phat_ToEndOfString(path) - path))
+		{
+			if (dir_info.attributes & ATTRIB_DIRECTORY)
+			{
+				return PhatState_IsADirectory;
+			}
+			file_info->phat = phat;
+			file_info->first_cluster = dir_info.first_cluster;
+			file_info->cur_cluster = dir_info.first_cluster;
+			file_info->file_size = dir_info.file_size;
+			file_info->readonly = readonly || ((dir_info.attributes & ATTRIB_READ_ONLY) != 0);
+			file_info->file_pointer = 0;
+			file_info->cur_cluster_index = 0;
+			file_info->buffer_LBA = Phat_ClusterToLBA(phat, file_info->first_cluster) + phat->partition_start_LBA;
+			if (file_info->file_size)
+			{
+				ret = Phat_ReadSectorsWithoutCache(phat, file_info->buffer_LBA, 1, file_info->sector_buffer);
+				if (ret != PhatState_OK)
+				{
+					Phat_CloseDir(&dir_info);
+					return ret;
+				}
+			}
+			Phat_CloseDir(&dir_info);
+			return PhatState_OK;
+		}
+	}
+
+	return ret;
+}
+

@@ -63,6 +63,7 @@ typedef struct Phat_Time_s
 
 typedef struct Phat_DirInfo_s
 {
+	Phat_p phat;
 	uint32_t dir_start_cluster;
 	uint32_t dir_current_cluster;
 	uint32_t cur_diritem_in_cur_cluster;
@@ -115,7 +116,7 @@ void Phat_NormalizePath(WChar_p path);
 
 PhatState Phat_Mount(Phat_p phat, int partition_index);
 PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info);
-PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info);
-PhatState Phat_CloseDir(Phat_p phat, Phat_DirInfo_p dir_info);
+PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
+void Phat_CloseDir(Phat_DirInfo_p dir_info);
 
 #endif

@@ -465,13 +465,14 @@ static uint8_t Phat_LFN_ChkSum(uint8_t *file_name_8_3)
 	return sum;
 }
 
-static PhatState Phat_GetDirItem(Phat_p phat, Phat_DirInfo_p dir_info, Phat_DirItem_p dir_item)
+static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem_p dir_item)
 {
 	PhatState ret = PhatState_OK;
 	LBA_t dir_sector_LBA;
 	uint32_t item_index_in_sector;
 	Phat_SectorCache_p cached_sector;
 	Phat_DirItem_p dir_items;
+	Phat_p phat = dir_info->phat;
 
 	if (dir_info->dir_current_cluster >= 2)
 		dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + dir_info->cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
@@ -527,10 +528,12 @@ static PhatBool_t Phat_IsValidLFNEntry(Phat_DirItem_p lfn_item)
 	return 1;
 }
 
-static PhatState Phat_MoveToNextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
+static PhatState Phat_MoveToNextDirItem(Phat_DirInfo_p dir_info)
 {
 	PhatState ret = PhatState_OK;
 	uint32_t next_cluster;
+	Phat_p phat = dir_info->phat;
+
 	if (dir_info->cur_diritem_in_cur_cluster++ >= phat->num_diritems_in_a_cluster)
 	{
 		ret = Phat_GetFATNextCluster(phat, dir_info->dir_current_cluster, &next_cluster);
@@ -552,18 +555,19 @@ static PhatState Phat_MoveToNextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 	return ret;
 }
 
-PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
+PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 {
 	PhatState ret = PhatState_OK;
 	Phat_DirItem_t diritem;
 	Phat_LFN_Entry_p lfnitem;
 	PhatBool_t no_checksum = 1;
 	uint8_t checksum;
+	Phat_p phat = dir_info->phat;
 
 	dir_info->LFN_length = 0;
 	for (;;)
 	{
-		ret = Phat_GetDirItem(phat, dir_info, &diritem);
+		ret = Phat_GetDirItem(dir_info, &diritem);
 		if (ret != PhatState_OK) return ret;
 		if (Phat_IsValidLFNEntry(&diritem))
 		{
@@ -580,14 +584,14 @@ PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 			}
 			ret = Phat_SuckLFNIntoBuffer(lfnitem, dir_info);
 			if (ret != PhatState_OK) return ret;
-			ret = Phat_MoveToNextDirItem(phat, dir_info);
+			ret = Phat_MoveToNextDirItem(dir_info);
 			if (ret != PhatState_OK) return ret;
 		}
 		else if (diritem.file_name_8_3[0] == 0xE5)
 		{
 			dir_info->LFN_length = 0;
 			no_checksum = 1;
-			ret = Phat_MoveToNextDirItem(phat, dir_info);
+			ret = Phat_MoveToNextDirItem(dir_info);
 			if (ret != PhatState_OK) return ret;
 		}
 		else if (diritem.file_name_8_3[0] == 0x00)
@@ -646,17 +650,15 @@ PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 				}
 			}
 			dir_info->LFN_name[dir_info->LFN_length] = L'\0';
-			Phat_MoveToNextDirItem(phat, dir_info);
+			Phat_MoveToNextDirItem(dir_info);
 			return PhatState_OK;
 		}
 	}
 }
 
-PhatState Phat_CloseDir(Phat_p phat, Phat_DirInfo_p dir_info)
+void Phat_CloseDir(Phat_DirInfo_p dir_info)
 {
-	UNUSED(phat);
 	memset(dir_info, 0, sizeof * dir_info);
-	return PhatState_OK;
 }
 
 void Phat_ToUpperDirectoryPath(WChar_p path)
@@ -745,6 +747,7 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 
 	Phat_NormalizePath(path);
 	memset(dir_info, 0, sizeof * dir_info);
+	dir_info->phat = phat;
 	dir_info->first_cluster = cur_dir_cluster;
 
 	for (;;)
@@ -761,7 +764,7 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 			dir_info->cur_diritem_in_cur_cluster = 0;
 			for (;;)
 			{
-				ret = Phat_NextDirItem(phat, dir_info);
+				ret = Phat_NextDirItem(dir_info);
 				if (ret == PhatState_EndOfDirectory)
 				{
 					return PhatState_DirectoryNotFound;

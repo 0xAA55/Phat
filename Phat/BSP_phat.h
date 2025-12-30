@@ -8,6 +8,7 @@ typedef uint64_t LBA_t;
 #else
 typedef uint32_t LBA_t;
 #endif
+typedef LBA_t *LBA_p;
 
 #ifndef SDMMC_SWDATATIMEOUT
 #define SDMMC_SWDATATIMEOUT 200

@@ -64,7 +64,7 @@ typedef struct Phat_DirItem_s
 {
 	uint8_t file_name_8_3[11];
 	uint8_t attributes;
-	uint8_t reserved;
+	uint8_t case_info;
 	uint8_t creation_time_tenths;
 	uint16_t creation_time;
 	uint16_t creation_date;
@@ -90,6 +90,8 @@ typedef struct Phat_LFN_Entry_s
 #pragma pack(pop)
 
 #define ATTRIB_LFN (ATTRIB_READ_ONLY | ATTRIB_HIDDEN | ATTRIB_SYSTEM | ATTRIB_VOLUME_ID)
+#define CI_EXTENSION_IS_LOWER 0x08
+#define CI_BASENAME_IS_LOWER 0x10
 
 static WChar_t Cp437_UpperPart[] =
 {

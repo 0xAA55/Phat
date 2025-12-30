@@ -79,6 +79,7 @@ typedef struct Phat_s
 	LBA_t root_dir_cluster;
 	LBA_t data_start_LBA;
 	LBA_t root_dir_start_LBA;
+	PhatBool_t FATs_are_same;
 	uint8_t FAT_bits;
 	uint8_t num_FATs;
 	uint16_t bytes_per_sector;

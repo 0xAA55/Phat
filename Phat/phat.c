@@ -424,6 +424,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	phat->num_diritems_in_a_sector = phat->bytes_per_sector / 32;
 	phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
 	phat->num_FAT_entries = (phat->FAT_size_in_sectors * phat->bytes_per_sector * 8) / phat->FAT_bits;
+	phat->FATs_are_same = !dbr->FATs_are_different;
 
 	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 1, &cached_sector);
 	if (ret != PhatState_OK) return ret;
@@ -606,6 +607,7 @@ static PhatState Phat_WriteFAT(Phat_p phat, uint32_t cluster_index, uint32_t wri
 			break;
 		}
 		Phat_SetCachedSectorModified(cached_sector);
+		if (!phat->FATs_are_same) break;
 	}
 	return PhatState_OK;
 }

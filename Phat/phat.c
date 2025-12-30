@@ -486,30 +486,36 @@ static PhatState Phat_GetDirItem(Phat_p phat, Phat_DirInfo_p dir_info, Phat_DirI
 	return PhatState_OK;
 }
 
-static void Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_p buffer)
+static PhatState Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_p buffer)
 {
-	if (buffer->LFN_length == MAX_LFN) return;
+	uint8_t order = lfn_item->order & 0x3F;
+	uint16_t write_pos = (order - 1) * 13;
+	if (order < 1) return PhatState_FSError;
+	if (write_pos >= MAX_LFN) return PhatState_FSError;
 	for (size_t i = 0; i < 5; i++)
 	{
 		WChar_t wchar = lfn_item->name1[i];
-		buffer->LFN_name[buffer->LFN_length++] = wchar;
-		if (!wchar) return;
-		if (buffer->LFN_length == MAX_LFN) return;
+		if (write_pos >= MAX_LFN) goto Ended;
+		buffer->LFN_name[write_pos++] = wchar;
+		if (!wchar) goto Ended;
 	}
 	for (size_t i = 0; i < 6; i++)
 	{
 		WChar_t wchar = lfn_item->name2[i];
-		buffer->LFN_name[buffer->LFN_length++] = wchar;
-		if (!wchar) return;
-		if (buffer->LFN_length == MAX_LFN) return;
+		if (write_pos >= MAX_LFN) goto Ended;
+		buffer->LFN_name[write_pos++] = wchar;
+		if (!wchar) goto Ended;
 	}
 	for (size_t i = 0; i < 2; i++)
 	{
 		WChar_t wchar = lfn_item->name3[i];
-		buffer->LFN_name[buffer->LFN_length++] = wchar;
-		if (!wchar) return;
-		if (buffer->LFN_length == MAX_LFN) return;
+		if (write_pos >= MAX_LFN) goto Ended;
+		buffer->LFN_name[write_pos++] = wchar;
+		if (!wchar) goto Ended;
 	}
+Ended:
+	if (lfn_item->order & 0x40) buffer->LFN_length = write_pos;
+	return PhatState_OK;
 }
 
 static PhatBool_t Phat_IsValidLFNEntry(Phat_DirItem_p lfn_item)
@@ -572,7 +578,8 @@ PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 				dir_info->checksum = lfnitem->checksum;
 				dir_info->LFN_length = 0;
 			}
-			Phat_SuckLFNIntoBuffer(lfnitem, dir_info);
+			ret = Phat_SuckLFNIntoBuffer(lfnitem, dir_info);
+			if (ret != PhatState_OK) return ret;
 			ret = Phat_MoveToNextDirItem(phat, dir_info);
 			if (ret != PhatState_OK) return ret;
 		}

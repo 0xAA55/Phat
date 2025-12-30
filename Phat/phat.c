@@ -1289,6 +1289,122 @@ static PhatState Phat_FindShortFileName(Phat_p phat, WChar_p path, uint8_t *sfn8
 	}
 }
 
+static PhatState Phat_Gen83NameForLongFilename(Phat_p phat, WChar_p filename, uint8_t *sfn83)
+{
+	PhatBool_t found = 0;
+	PhatState ret;
+	WChar_p tail = Phat_ToEndOfString(filename);
+	WChar_p dot;
+	uint32_t index = 1;
+
+	memset(sfn83, 0x20, 11);
+	while (*filename == L'.') filename++;
+	while (tail > filename)
+	{
+		tail--;
+		if (*tail == L'.') *tail = L'\0';
+	}
+	dot = tail;
+	while (dot > filename)
+	{
+		dot--;
+		if (*dot == L'.')
+		{
+			dot++;
+			break;
+		}
+	}
+	if (dot == filename)
+	{
+		for (size_t i = 0; i < 8 && filename[i]; i++)
+		{
+			WChar_t ch = toupper(filename[i]);
+			sfn83[i] = (uint8_t)ch;
+		}
+	}
+	else
+	{
+		size_t end = dot - filename;
+		if (end > 8) end = 8;
+		for (size_t i = 0; i < end && filename[i]; i++)
+		{
+			WChar_t ch = toupper(filename[i]);
+			sfn83[i] = (uint8_t)ch;
+		}
+		for (size_t i = 0; i < 3 && dot[i]; i++)
+		{
+			WChar_t ch = toupper(dot[i]);
+			sfn83[8 + i] = (uint8_t)ch;
+		}
+	}
+	if (sfn83[0] == ' ')
+	{
+		memcpy(sfn83, "NONAME", 6);
+	}
+
+	for (;;)
+	{
+		ret = Phat_FindShortFileName(phat, filename, sfn83, &found);
+		if (ret != PhatState_OK) return ret;
+		if (!found) return PhatState_OK;
+		if (index < 10)
+		{
+			sfn83[6] = '~';
+			sfn83[7] = '0' + (uint8_t)index;
+			index++;
+		}
+		else if (index < 100)
+		{
+			sfn83[5] = '~';
+			sfn83[6] = '0' + (uint8_t)(index / 10);
+			sfn83[7] = '0' + (uint8_t)(index % 10);
+			index++;
+		}
+		else if (index < 1000)
+		{
+			sfn83[4] = '~';
+			sfn83[5] = '0' + (uint8_t)(index / 100);
+			sfn83[6] = '0' + (uint8_t)((index / 10) % 10);
+			sfn83[7] = '0' + (uint8_t)(index % 10);
+			index++;
+		}
+		else if (index < 10000)
+		{
+			sfn83[3] = '~';
+			sfn83[4] = '0' + (uint8_t)(index / 1000);
+			sfn83[5] = '0' + (uint8_t)((index / 100) % 10);
+			sfn83[6] = '0' + (uint8_t)((index / 10) % 10);
+			sfn83[7] = '0' + (uint8_t)(index % 10);
+			index++;
+		}
+		else if (index < 100000)
+		{
+			sfn83[2] = '~';
+			sfn83[3] = '0' + (uint8_t)(index / 10000);
+			sfn83[4] = '0' + (uint8_t)((index / 1000) % 10);
+			sfn83[5] = '0' + (uint8_t)((index / 100) % 10);
+			sfn83[6] = '0' + (uint8_t)((index / 10) % 10);
+			sfn83[7] = '0' + (uint8_t)(index % 10);
+			index++;
+		}
+		else if (index < 1000000)
+		{
+			sfn83[1] = '~';
+			sfn83[2] = '0' + (uint8_t)(index / 100000);
+			sfn83[3] = '0' + (uint8_t)((index / 10000) % 10);
+			sfn83[4] = '0' + (uint8_t)((index / 1000) % 10);
+			sfn83[5] = '0' + (uint8_t)((index / 100) % 10);
+			sfn83[6] = '0' + (uint8_t)((index / 10) % 10);
+			sfn83[7] = '0' + (uint8_t)(index % 10);
+			index++;
+		}
+		else
+		{
+			return PhatState_FSError;
+		}
+	}
+}
+
 PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
 {
 	Phat_DirInfo_t dir_info;

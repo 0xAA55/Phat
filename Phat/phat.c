@@ -416,7 +416,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	return PhatState_OK;
 }
 
-PhatState Phat_DeInit(Phat_p phat)
+PhatState Phat_FlushCache(Phat_p phat)
 {
 	PhatState ret = PhatState_OK;
 	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
@@ -428,6 +428,18 @@ PhatState Phat_DeInit(Phat_p phat)
 			if (ret != PhatState_OK) return ret;
 		}
 	}
+	return ret;
+}
+
+PhatState Phat_Unmount(Phat_p phat)
+{
+	return Phat_FlushCache(phat);
+}
+
+PhatState Phat_DeInit(Phat_p phat)
+{
+	PhatState ret = Phat_FlushCache(phat);
+	if (ret != PhatState_OK) return ret;
 	if (!Phat_CloseDevice(&phat->driver)) return PhatState_DriverError;
 	Phat_DeInitDriver(&phat->driver);
 	memset(phat, 0, sizeof * phat);

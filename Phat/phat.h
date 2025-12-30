@@ -135,6 +135,8 @@ void Phat_ToUpperDirectoryPath(WChar_p path);
 void Phat_NormalizePath(WChar_p path);
 
 PhatState Phat_Mount(Phat_p phat, int partition_index);
+PhatState Phat_FlushCache(Phat_p phat);
+PhatState Phat_Unmount(Phat_p phat);
 PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info);
 PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
 void Phat_CloseDir(Phat_DirInfo_p dir_info);

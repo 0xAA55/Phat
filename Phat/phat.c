@@ -1208,6 +1208,57 @@ PhatBool_t Phat_IsValidFilename(WChar_p filename)
 	return 1;
 }
 
+static PhatBool_t Phat_IsFit83(WChar_p filename, uint8_t *sfn83, uint8_t *case_info)
+{
+	PhatBool_t bn_has_lower = 0;
+	PhatBool_t bn_has_upper = 0;
+	PhatBool_t ext_has_lower = 0;
+	PhatBool_t ext_has_upper = 0;
+	int length = 0;
+	int dot = -1;
+	while (filename[length]) length++;
+	if (length == 0 || length > 11) return 0;
+	for (int i = 0; i < length; i++)
+	{
+		WChar_t ch = filename[i];
+		if (ch == ' ') return 0;
+		if (ch >= L'A' && ch <= L'Z')
+		{
+			if (i < 8) bn_has_upper = 1;
+			else ext_has_upper = 1;
+		}
+		else if (ch >= L'a' && ch <= L'z')
+		{
+			if (i < 8) bn_has_lower = 1;
+			else ext_has_lower = 1;
+		}
+		else if (ch == L'.')
+		{
+			dot = i;
+			if (i > 8) return 0;
+			if ((length - dot) > 4) return 0;
+		}
+		else if (ch >= 128) return 0;
+		if (bn_has_upper && bn_has_lower) return 0;
+		if (ext_has_upper && ext_has_lower) return 0;
+	}
+	if (dot < 0 && length > 8) return 0;
+	memset(sfn83, ' ', 11);
+	*case_info = 0;
+	if (bn_has_lower) *case_info |= CI_BASENAME_IS_LOWER;
+	if (ext_has_lower) *case_info |= CI_EXTENSION_IS_LOWER;
+	if (dot < 0)
+	{
+		for(int i = 0; i < length; i++) sfn83[i] = toupper(filename[i]);
+	}
+	else
+	{
+		for(int i = 0; i < dot; i++) sfn83[i] = toupper(filename[i]);
+		for(int i = dot + 1; i < length; i++) sfn83[8 + (i - (dot + 1))] = toupper(filename[i]);
+	}
+	return 1;
+}
+
 PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
 {
 	Phat_DirInfo_t dir_info;

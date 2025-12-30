@@ -113,6 +113,7 @@ typedef enum PhatState_e
 	PhatState_InvalidPath,
 	PhatState_EndOfDirectory,
 	PhatState_EndOfFATChain,
+	PhatState_EndOfFile,
 }PhatState;
 
 #define ATTRIB_READ_ONLY 0x01
@@ -134,4 +135,5 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
 void Phat_CloseDir(Phat_DirInfo_p dir_info);
 
 PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
+PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_to_read, uint32_t *bytes_read);
 #endif

@@ -1553,8 +1553,17 @@ PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_Fil
 		ret = Phat_NextDirItem(&dir_info);
 		if (ret == PhatState_EndOfDirectory)
 		{
-			Phat_CloseDir(&dir_info);
-			return PhatState_FileNotFound;
+			if (readonly)
+			{
+				Phat_CloseDir(&dir_info);
+				return PhatState_FileNotFound;
+			}
+			else
+			{
+				Phat_CloseDir(&dir_info);
+				ret = Phat_CreateNewItemInDir(phat, path, 0);
+				if (ret != PhatState_OK) return ret;
+			}
 		}
 		else if (ret != PhatState_OK)
 		{

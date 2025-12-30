@@ -22,9 +22,10 @@ int main()
 	V(Phat_Mount(&phat, 0));
 
 	V(Phat_OpenDir(&phat, path, &dir_info));
-	while (res == PhatState_OK)
+	for (;;)
 	{
 		res = Phat_NextDirItem(&phat, &dir_info);
+		if (res != PhatState_OK) break;
 		if (dir_info.attributes & ATTRIB_DIRECTORY)
 			printf("Dir:  %S\n", dir_info.LFN_name);
 		else

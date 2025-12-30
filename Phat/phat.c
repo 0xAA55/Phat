@@ -1259,6 +1259,36 @@ static PhatBool_t Phat_IsFit83(WChar_p filename, uint8_t *sfn83, uint8_t *case_i
 	return 1;
 }
 
+static PhatState Phat_FindShortFileName(Phat_p phat, WChar_p path, uint8_t *sfn83, PhatBool_p found)
+{
+	PhatState ret;
+	Phat_DirInfo_t dir_info;
+
+	*found = 0;
+	ret = Phat_OpenDir(phat, path, &dir_info);
+	if (ret != PhatState_OK) return ret;
+	for (;;)
+	{
+		ret = Phat_NextDirItem(&dir_info);
+		if (ret == PhatState_EndOfDirectory)
+		{
+			Phat_CloseDir(&dir_info);
+			return PhatState_OK;
+		}
+		else if (ret != PhatState_OK)
+		{
+			Phat_CloseDir(&dir_info);
+			return ret;
+		}
+		if (!memcmp(dir_info.file_name_8_3, sfn83, 11))
+		{
+			*found = 1;
+			Phat_CloseDir(&dir_info);
+			return PhatState_OK;
+		}
+	}
+}
+
 PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
 {
 	Phat_DirInfo_t dir_info;

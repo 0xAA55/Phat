@@ -2,7 +2,7 @@
 
 #include <string.h>
 
-#ifndef UNUSED(x)
+#ifndef UNUSED
 #define UNUSED(x) ((void)(x))
 #endif
 

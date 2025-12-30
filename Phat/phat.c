@@ -785,7 +785,8 @@ static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem_p dir_ite
 	Phat_DirItem_p dir_items;
 	Phat_p phat = dir_info->phat;
 
-	if (dir_info->dir_current_cluster < 2) return PhatState_EndOfDirectory;
+	if (dir_info->dir_start_cluster == 0) return PhatState_EndOfDirectory;
+	if (dir_info->dir_current_cluster < 2) return PhatState_InternalError;
 	if (phat->FAT_bits == 32)
 		dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + dir_info->cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
 	else // Root directory in FAT12/16
@@ -808,15 +809,17 @@ static PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_DirItem_p d
 	Phat_DirItem_p dir_items;
 	Phat_p phat = dir_info->phat;
 
-	if (dir_info->dir_current_cluster < 2)
+	if (dir_info->dir_start_cluster == 0)
 	{
 		uint32_t new_cluster;
 		ret = Phat_AllocateCluster(phat, &new_cluster);
 		if (ret != PhatState_OK) return ret;
+		dir_info->dir_start_cluster = new_cluster;
 		dir_info->dir_current_cluster = new_cluster;
 		ret = Phat_WipeCluster(phat, new_cluster);
 		if (ret != PhatState_OK) return ret;
 	}
+	if (dir_info->dir_current_cluster < 2) return PhatState_InternalError;
 	if (phat->FAT_bits == 32)
 		dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + dir_info->cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
 	else // Root directory in FAT12/16

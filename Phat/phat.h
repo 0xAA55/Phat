@@ -44,6 +44,10 @@ typedef struct Phat_s
 	uint8_t sectors_per_cluster;
 	uint8_t num_diritems_in_a_sector;
 	uint16_t num_diritems_in_a_cluster;
+	uint32_t num_FAT_entries;
+	PhatBool_t has_FSInfo;
+	uint32_t free_clusters;
+	uint32_t next_free_cluster;
 }Phat_t, *Phat_p;
 
 typedef struct Phat_Date_s

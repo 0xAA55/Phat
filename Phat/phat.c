@@ -60,6 +60,17 @@ typedef struct Phat_DBR_s
 	uint16_t boot_sector_signature;
 }Phat_DBR_t, *Phat_DBR_p;
 
+typedef struct Phat_FSInfo_s
+{
+	uint32_t lead_signature;
+	uint8_t reserved1[480];
+	uint32_t struct_signature;
+	uint32_t free_cluster_count;
+	uint32_t next_free_cluster;
+	uint8_t reserved2[12];
+	uint32_t trail_signature;
+}Phat_FSInfo_t, *Phat_FSInfo_p;
+
 typedef struct Phat_DirItem_s
 {
 	uint8_t file_name_8_3[11];
@@ -342,7 +353,8 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	Phat_SectorCache_p cached_sector;
 	Phat_MBR_p mbr;
 	Phat_DBR_p dbr;
-	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
+	Phat_FSInfo_p fsi;
+	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA, &cached_sector);
 	if (ret != PhatState_OK) return ret;
 
 	mbr = (Phat_MBR_p)cached_sector->data;
@@ -381,6 +393,25 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	phat->sectors_per_cluster = dbr->sectors_per_cluster;
 	phat->num_diritems_in_a_sector = phat->bytes_per_sector / 32;
 	phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
+	phat->num_FAT_entries = (phat->FAT_size_in_sectors * phat->bytes_per_sector * 8) / phat->FAT_bits;
+
+	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 1, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+	fsi = (Phat_FSInfo_p)cached_sector->data;
+	if (fsi->lead_signature == 0x41615252 && fsi->struct_signature == 0x61417272 && fsi->trail_signature == 0xAA55)
+	{
+		phat->has_FSInfo = 1;
+		phat->free_clusters = fsi->free_cluster_count;
+		phat->next_free_cluster = fsi->next_free_cluster;
+	}
+	else
+	{
+		phat->has_FSInfo = 0;
+		ret = Phat_SeekForFreeCluster(phat, 0, &phat->next_free_cluster);
+		if (ret != PhatState_OK) phat->next_free_cluster = 2;
+		ret = Phat_SumFreeClusters(phat, &phat->free_clusters);
+		if (ret != PhatState_OK) phat->free_clusters = 0;
+	}
 
 	return PhatState_OK;
 }

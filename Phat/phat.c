@@ -548,6 +548,68 @@ static PhatState Phat_ReadFAT(Phat_p phat, uint32_t cluster_index, uint32_t *rea
 	return PhatState_OK;
 }
 
+static PhatState Phat_WriteFAT(Phat_p phat, uint32_t cluster_index, uint32_t write)
+{
+	PhatState ret = PhatState_OK;
+	int half_cluster = 0;
+	uint32_t fat_offset;
+	LBA_t fat_sector_LBA;
+	Phat_SectorCache_p cached_sector;
+	size_t ent_offset_in_sector;
+
+	switch (phat->FAT_bits)
+	{
+	case 12:
+		half_cluster = cluster_index & 1;
+		fat_offset = cluster_index + (cluster_index >> 1);
+		break;
+	case 16:
+		fat_offset = cluster_index * 2;
+		break;
+	case 32:
+		fat_offset = cluster_index * 4;
+		break;
+	default:
+		return PhatState_InternalError;
+	}
+	for (LBA_t i = 0; i < phat->num_FATs; i++)
+	{
+		fat_sector_LBA = phat->FAT1_start_LBA + i * phat->FAT_size_in_sectors + (fat_offset / phat->bytes_per_sector);
+		ret = Phat_ReadSectorThroughCache(phat, fat_sector_LBA, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		ent_offset_in_sector = fat_offset % phat->bytes_per_sector;
+		switch (phat->FAT_bits)
+		{
+		case 12:
+		{
+			uint16_t raw_entry = *(uint16_t *)&cached_sector->data[ent_offset_in_sector];
+			if (write == 0x0FFFFFFF) write = 0x0FFF;
+			if (half_cluster == 0)
+			{
+				raw_entry &= 0xF000;
+				raw_entry |= (write & 0x0FFF);
+			}
+			else
+			{
+				raw_entry &= 0x000F;
+				raw_entry |= (write & 0x0FFF) << 4;
+			}
+			*(uint16_t *)&cached_sector->data[ent_offset_in_sector] = raw_entry;
+		}
+		break;
+		case 16:
+			if (write == 0x0FFFFFFF) write = 0xFFFF;
+			*(uint16_t *)&cached_sector->data[ent_offset_in_sector] = write;
+			break;
+		case 32:
+			*(uint32_t *)&cached_sector->data[ent_offset_in_sector] = write;
+			break;
+		}
+		Phat_SetCachedSectorModified(cached_sector);
+	}
+	return PhatState_OK;
+}
+
 static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint32_t *next_cluster)
 {
 	PhatState ret = PhatState_OK;

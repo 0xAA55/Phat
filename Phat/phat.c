@@ -928,7 +928,7 @@ void Phat_NormalizePath(WChar_p path)
 	}
 }
 
-void Phat_PathToName(WChar_p path)
+void Phat_PathToName(WChar_p path, WChar_p name)
 {
 	WChar_p chr = Phat_ToEndOfString(path);
 	size_t length = 0;
@@ -960,9 +960,18 @@ void Phat_PathToName(WChar_p path)
 	{
 		for (size_t i = 0; i <= length; i++)
 		{
-			path[i] = chr[i];
+			name[i] = chr[i];
 		}
 	}
+	else
+	{
+		name[0] = L'\0';
+	}
+}
+
+void Phat_PathToNameInPlace(WChar_p path)
+{
+	Phat_PathToName(path, path);
 }
 
 PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)

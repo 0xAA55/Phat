@@ -159,7 +159,8 @@ PhatState Phat_DeInit(Phat_p phat);
 
 void Phat_ToUpperDirectoryPath(WChar_p path);
 void Phat_NormalizePath(WChar_p path);
-void Phat_PathToName(WChar_p path);
+void Phat_PathToName(WChar_p path, WChar_p name);
+void Phat_PathToNameInPlace(WChar_p path);
 
 PhatState Phat_Mount(Phat_p phat, int partition_index);
 PhatState Phat_FlushCache(Phat_p phat);

@@ -446,6 +446,22 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	return PhatState_OK;
 }
 
+static PhatState Phat_UpdateFSInfo(Phat_p phat)
+{
+	PhatState ret = PhatState_OK;
+	Phat_SectorCache_p cached_sector;
+	Phat_FSInfo_p fsi;
+
+	ret = Phat_ReadSectorThroughCache(phat, phat->partition_start_LBA + 1, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	fsi = (Phat_FSInfo_p)cached_sector->data;
+	fsi->next_free_cluster = phat->next_free_cluster;
+	fsi->free_cluster_count = phat->free_clusters;
+	Phat_SetCachedSectorModified(cached_sector);
+	return PhatState_OK;
+}
+
 PhatState Phat_FlushCache(Phat_p phat)
 {
 	PhatState ret = PhatState_OK;

@@ -1,5 +1,6 @@
 #include "phat.h"
 
+#include <ctype.h>
 #include <string.h>
 
 #ifndef UNUSED
@@ -820,7 +821,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 				{
 					uint8_t ch = diritem.file_name_8_3[i];
 					if (diritem.case_info & CI_BASENAME_IS_LOWER)
-						ch = (ch >= 'A' && ch <= 'Z') ? (ch + 0x20) : ch;
+						ch = tolower(ch);
 					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(ch);
 				}
 				if (diritem.file_name_8_3[8] != ' ')
@@ -837,7 +838,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 				{
 					uint8_t ch = diritem.file_name_8_3[i];
 					if (diritem.case_info & CI_EXTENSION_IS_LOWER)
-						ch = (ch >= 'A' && ch <= 'Z') ? (ch + 0x20) : ch;
+						ch = tolower(ch);
 					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(ch);
 				}
 			}

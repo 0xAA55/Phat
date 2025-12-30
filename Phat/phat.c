@@ -617,7 +617,7 @@ PhatState Phat_NextDirItem(Phat_p phat, Phat_DirInfo_p dir_info)
 				}
 				if (diritem.file_name_8_3[8] != ' ')
 				{
-					dir_info->LFN_name[dir_info->LFN_length++] == L'.';
+					dir_info->LFN_name[dir_info->LFN_length++] = L'.';
 					for (size_t i = 8; i < 11; i++)
 					{
 						uint8_t ch = diritem.file_name_8_3[i];

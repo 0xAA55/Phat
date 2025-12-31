@@ -694,6 +694,7 @@ static PhatState Phat_UnlinkCluster(Phat_p phat, uint32_t cluster_index)
 	uint32_t end_of_chain = phat->end_of_cluster_chain;
 	for (;;)
 	{
+		if (cluster_index + 2 < phat->next_free_cluster) phat->next_free_cluster = cluster_index + 2;
 		ret = Phat_ReadFAT(phat, cluster_index, &next_sector);
 		if (ret != PhatState_OK) return ret;
 		ret = Phat_WriteFAT(phat, cluster_index, 0);

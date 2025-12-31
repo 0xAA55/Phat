@@ -417,6 +417,11 @@ static PhatState Phat_SumFreeClusters(Phat_p phat, uint32_t *num_free_clusters_o
 	return PhatState_OK;
 }
 
+static LBA_t Phat_ClusterToLBA(Phat_p phat, uint32_t cluster)
+{
+	return phat->data_start_LBA + (LBA_t)(cluster - 2) * phat->sectors_per_cluster;
+}
+
 static PhatState Phat_SeekForFreeCluster(Phat_p phat, uint32_t *cluster_out)
 {
 	return Phat_SearchForFreeCluster(phat, phat->next_free_cluster - 2, cluster_out);
@@ -740,11 +745,6 @@ static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint3
 	if (cluster_number < 2) return PhatState_FATError;
 	*next_cluster = cluster_number;
 	return PhatState_OK;
-}
-
-static LBA_t Phat_ClusterToLBA(Phat_p phat, uint32_t cluster)
-{
-	return phat->data_start_LBA + (LBA_t)(cluster - 2) * phat->sectors_per_cluster;
 }
 
 static Phat_Time_t Phat_ParseTime(uint16_t time, uint8_t tenths)

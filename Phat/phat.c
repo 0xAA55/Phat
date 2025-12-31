@@ -2003,6 +2003,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, WChar_p path)
 	Phat_DirInfo_t dir_info;
 	size_t name_len;
 
+	Phat_NormalizePath(path);
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
 	ret = Phat_NextDirItem(&dir_info);

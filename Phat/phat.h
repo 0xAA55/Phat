@@ -190,4 +190,5 @@ PhatState Phat_SeekFile(Phat_FileInfo_p file_info, uint32_t position);
 void Phat_GetFilePointer(Phat_FileInfo_p file_info, uint32_t *position);
 void Phat_GetFileSize(Phat_FileInfo_p file_info, uint32_t *size);
 PhatState Phat_CreateDirectory(Phat_p phat, WChar_p path);
+PhatState Phat_RemoveDirectory(Phat_p phat, WChar_p path);
 #endif

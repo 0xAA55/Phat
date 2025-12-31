@@ -1457,13 +1457,34 @@ static PhatState Phat_FindShortFileName(Phat_p phat, WChar_p path, uint8_t *sfn8
 	}
 }
 
-static PhatState Phat_Gen83NameForLongFilename(Phat_p phat, WChar_p filename, uint8_t *sfn83)
+static PhatState Phat_Gen83NameForLongFilename(Phat_p phat, WChar_p path, uint8_t *sfn83)
 {
 	PhatBool_t found = 0;
 	PhatState ret;
-	WChar_p tail = Phat_ToEndOfString(filename);
+	WChar_p tail;
 	WChar_p dot;
-	uint32_t index = 1;
+	WChar_p filename;
+
+	// Find the basename in a path, it's not allowed to have trailing slash in the tail
+	tail = Phat_ToEndOfString(path);
+	while (--tail > path)
+	{
+		if (*tail == L'/' || *tail == L'\\') *tail = L'\0';
+		else break;
+	}
+	filename = tail++;
+	while (filename > path)
+	{
+		if (*filename == L'/' || *filename == L'\\')
+		{
+			filename++;
+			break;
+		}
+		else
+		{
+			filename--;
+		}
+	}
 
 	memset(sfn83, 0x20, 11);
 	while (*filename == L'.') filename++;
@@ -1510,9 +1531,9 @@ static PhatState Phat_Gen83NameForLongFilename(Phat_p phat, WChar_p filename, ui
 		memcpy(sfn83, "NONAME", 6);
 	}
 
-	for (;;)
+	for (uint32_t index = 1;;)
 	{
-		ret = Phat_FindShortFileName(phat, filename, sfn83, &found);
+		ret = Phat_FindShortFileName(phat, path, sfn83, &found);
 		if (ret != PhatState_OK) return ret;
 		if (!found) return PhatState_OK;
 		if (index < 10)
@@ -1584,18 +1605,34 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	uint32_t fnlen = 0;
 	uint32_t items_needed;
 	uint32_t first_diritem = 0;
-	uint32_t first_diritem_in_cluster = 0;
 	uint32_t free_count = 0;
 	Phat_DirItem_t dir_item;
-	WChar_p ptr = Phat_ToEndOfString(path);
-	if (ptr > path && (*(ptr - 1) == L'/' || *(ptr - 1) == L'\\')) return PhatState_InvalidParameter;
+	WChar_p ptr;
+	uint32_t first_cluster = 0;
+
+	Phat_NormalizePath(path);
+	ptr = Phat_ToEndOfString(path);
 	if (ptr == path) return PhatState_InvalidParameter;
 
 	Phat_PathToName(path, longname);
-	if (!Phat_IsValidFilename(path)) return PhatState_InvalidParameter;
+	if (!Phat_IsValidFilename(longname)) return PhatState_InvalidParameter;
 	while (longname[fnlen]) fnlen++;
-	while (ptr > path && *ptr != L'/' && *ptr != L'\\') ptr--;
-	*ptr = L'\0';
+
+	// Check if file/directory already exists
+	Phat_DirInfo_t dir_info_find;
+	ret = Phat_FindItem(phat, path, &dir_info_find);
+	switch (ret)
+	{
+	case PhatState_OK:
+		if (attrib & ATTRIB_DIRECTORY)
+			return PhatState_DirectoryAlreadyExists;
+		else
+			return PhatState_FileAlreadyExists;
+	case PhatState_EndOfDirectory:
+		break;
+	default:
+		return ret;
+	}
 
 	if (Phat_IsFit83(longname, name83, &case_info))
 	{
@@ -1604,11 +1641,12 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	}
 	else
 	{
-		ret = Phat_Gen83NameForLongFilename(phat, longname, name83);
+		ret = Phat_Gen83NameForLongFilename(phat, path, name83);
 		if (ret != PhatState_OK) return ret;
 		items_needed = 1 + ((fnlen + 12) / 13);
 	}
 
+	Phat_ToUpperDirectoryPath(path);
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
 	if (dir_info.dir_start_cluster == 0)
@@ -1621,24 +1659,6 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 		dir_info.dir_current_cluster = new_cluster;
 		ret = Phat_WipeCluster(phat, new_cluster);
 		if (ret != PhatState_OK) return ret;
-	}
-	else
-	{
-		// Check if file/directory already exists
-		Phat_DirInfo_t dir_info_find;
-		ret = Phat_FindItem(phat, path, &dir_info_find);
-		switch (ret)
-		{
-		case PhatState_OK:
-			if (attrib & ATTRIB_DIRECTORY)
-				return PhatState_DirectoryAlreadyExists;
-			else
-				return PhatState_FileAlreadyExists;
-		case PhatState_EndOfDirectory:
-			break;
-		default:
-			return ret;
-		}
 	}
 	for (;;)
 	{

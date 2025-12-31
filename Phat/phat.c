@@ -540,23 +540,10 @@ static PhatState Phat_WipeCluster(Phat_p phat, uint32_t cluster)
 	{
 		LBA_t LBA = cluster_LBA + i;
 		PhatBool_t wiped = 0;
-		for (size_t c = 0; c < PHAT_CACHED_SECTORS; c++)
-		{
-			Phat_SectorCache_p cached_sector = &phat->cache[c];
-			if (Phat_IsCachedSectorValid(cached_sector) && cached_sector->LBA == LBA)
-			{
-				memset(cached_sector->data, 0, sizeof cached_sector->data);
-				Phat_SetCachedSectorModified(cached_sector);
-				wiped = 1;
-				break;
-			}
-		}
-		if (!wiped)
-		{
-			ret = Phat_WriteSectorsWithoutCache(phat, LBA, 1, empty_sector);
-			if (ret != PhatState_OK) return ret;
-		}
+		ret = Phat_WriteSectorsWithoutCache(phat, LBA, 1, empty_sector);
+		if (ret != PhatState_OK) return ret;
 	}
+	return PhatState_OK;
 }
 
 static PhatState Phat_ReadFAT(Phat_p phat, uint32_t cluster_index, uint32_t *read_out)

@@ -659,6 +659,31 @@ static PhatState Phat_WriteFAT(Phat_p phat, uint32_t cluster_index, uint32_t wri
 	return PhatState_OK;
 }
 
+static PhatState Phat_UnlinkCluster(Phat_p phat, uint32_t cluster_index)
+{
+	PhatState ret;
+	uint32_t next_sector;
+	uint32_t end_of_chain;
+	switch (phat->FAT_bits)
+	{
+	case 12: end_of_chain = 0x0FF0; break;
+	case 16: end_of_chain = 0xFFF0; break;
+	case 32: end_of_chain = 0x0FFFFFF0; break;
+	default: return PhatState_InternalError;
+	}
+	for (;;)
+	{
+		ret = Phat_ReadFAT(phat, cluster_index, &next_sector);
+		if (ret != PhatState_OK) return ret;
+		ret = Phat_WriteFAT(phat, cluster_index, 0);
+		if (ret != PhatState_OK) return ret;
+		if (next_sector >= end_of_chain) break;
+		if (next_sector < 2) return PhatState_FATError;
+		cluster_index = next_sector - 2;
+	}
+	return PhatState_OK;
+}
+
 static PhatState Phat_AllocateCluster(Phat_p phat, uint32_t *allocated_cluster)
 {
 	PhatState ret;

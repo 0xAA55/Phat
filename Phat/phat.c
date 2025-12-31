@@ -1578,6 +1578,7 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	if (ret != PhatState_OK) return ret;
 	if (dir_info.dir_start_cluster == 0)
 	{
+		// New directory without contents, allocate cluster for it
 		uint32_t new_cluster;
 		ret = Phat_AllocateCluster(phat, &new_cluster);
 		if (ret != PhatState_OK) return ret;
@@ -1585,6 +1586,24 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 		dir_info.dir_current_cluster = new_cluster;
 		ret = Phat_WipeCluster(phat, new_cluster);
 		if (ret != PhatState_OK) return ret;
+	}
+	else
+	{
+		// Check if file/directory already exists
+		Phat_DirInfo_t dir_info_find;
+		ret = Phat_FindItem(phat, path, &dir_info_find);
+		switch (ret)
+		{
+		case PhatState_OK:
+			if (attrib & ATTRIB_DIRECTORY)
+				return PhatState_DirectoryAlreadyExists;
+			else
+				return PhatState_FileAlreadyExists;
+		case PhatState_EndOfDirectory:
+			break;
+		default:
+			return ret;
+		}
 	}
 	for (;;)
 	{

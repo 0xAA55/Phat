@@ -1702,9 +1702,44 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	Phat_CloseDir(&dir_info);
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
-	while (dir_info.cur_diritem != first_diritem)
+	dir_info.cur_diritem = first_diritem;
+	ret = Phat_UpdateClusterByDirItemIndex(&dir_info);
+	if (ret != PhatState_OK) return ret;
+	if (attrib & ATTRIB_DIRECTORY)
 	{
-		Phat_MoveToNextDirItem(&dir_info);
+		Phat_SectorCache_p cached_sector = NULL;
+		Phat_DirItem_p dir_items;
+		ret = Phat_AllocateCluster(phat, &first_cluster);
+		if (ret != PhatState_OK) return ret;
+		ret = Phat_WipeCluster(phat, first_cluster);
+		if (ret != PhatState_OK) return ret;
+		ret = Phat_ReadSectorThroughCache(phat, Phat_ClusterToLBA(phat, first_cluster) + phat->partition_start_LBA, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		dir_items = (Phat_DirItem_p)cached_sector->data;
+		memcpy(dir_items[0].file_name_8_3, ".          ", 11);
+		dir_items[0].attributes = ATTRIB_DIRECTORY;
+		dir_items[0].case_info = 0;
+		dir_items[0].creation_time_tenths = 0;
+		dir_items[0].creation_time = Phat_EncodeTime(&phat->cur_time);
+		dir_items[0].creation_date = Phat_EncodeDate(&phat->cur_date);
+		dir_items[0].last_access_date = Phat_EncodeDate(&phat->cur_date);
+		dir_items[0].first_cluster_high = first_cluster >> 16;
+		dir_items[0].last_modification_time = Phat_EncodeTime(&phat->cur_time);
+		dir_items[0].last_modification_date = Phat_EncodeDate(&phat->cur_date);
+		dir_items[0].first_cluster_low = first_cluster & 0xFFFF;
+		dir_items[0].file_size = 0;
+		memcpy(dir_items[1].file_name_8_3, "..         ", 11);
+		dir_items[1].attributes = ATTRIB_DIRECTORY;
+		dir_items[1].case_info = 0;
+		dir_items[1].creation_time_tenths = 0;
+		dir_items[1].creation_time = Phat_EncodeTime(&phat->cur_time);
+		dir_items[1].creation_date = Phat_EncodeDate(&phat->cur_date);
+		dir_items[1].last_access_date = Phat_EncodeDate(&phat->cur_date);
+		dir_items[1].first_cluster_high = dir_info.dir_start_cluster >> 16;
+		dir_items[1].last_modification_time = Phat_EncodeTime(&phat->cur_time);
+		dir_items[1].last_modification_date = Phat_EncodeDate(&phat->cur_date);
+		dir_items[1].first_cluster_low = dir_info.dir_start_cluster & 0xFFFF;
+		dir_items[1].file_size = 0;
 	}
 	if (!only83)
 	{
@@ -1751,12 +1786,13 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	dir_item.last_modification_date = Phat_EncodeDate(&phat->cur_date);
 	dir_item.last_modification_time = Phat_EncodeTime(&phat->cur_time);
 	dir_item.last_access_date = Phat_EncodeDate(&phat->cur_date);
-	dir_item.first_cluster_low = 0;
-	dir_item.first_cluster_high = 0;
+	dir_item.first_cluster_low = first_cluster & 0xFFFF;
+	dir_item.first_cluster_high = first_cluster >> 16;
 	dir_item.file_size = 0;
 	ret = Phat_PutDirItem(&dir_info, &dir_item);
 	if (ret != PhatState_OK)
 	{
+		if (first_cluster > 2) Phat_UnlinkCluster(phat, first_cluster - 2);
 		Phat_CloseDir(&dir_info);
 		return ret;
 	}

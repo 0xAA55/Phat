@@ -805,6 +805,34 @@ static uint8_t Phat_LFN_ChkSum(uint8_t *file_name_8_3)
 	return sum;
 }
 
+static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info)
+{
+	PhatState ret = PhatState_OK;
+	Phat_p phat = dir_info->phat;
+	uint32_t cluster_index;
+	uint32_t next_cluster;
+	if (dir_info->dir_start_cluster < 2) return PhatState_InvalidParameter;
+	cluster_index = dir_info->cur_diritem / phat->sectors_per_cluster;
+	if (dir_info->dir_current_cluster_index > cluster_index)
+	{
+		dir_info->dir_current_cluster_index = 0;
+		dir_info->dir_current_cluster = dir_info->dir_start_cluster;
+	}
+	while (dir_info->dir_current_cluster_index < cluster_index)
+	{
+		if (dir_info->dir_current_cluster < 2) return PhatState_InternalError;
+		ret = Phat_GetFATNextCluster(phat, dir_info->dir_current_cluster, &next_cluster);
+		if (ret == PhatState_EndOfFATChain)
+			return PhatState_EndOfDirectory;
+		else if (ret != PhatState_OK)
+			return ret;
+		if (next_cluster > phat->max_valid_cluster) return PhatState_FATError;
+		dir_info->dir_current_cluster_index++;
+		dir_info->dir_current_cluster = next_cluster;
+	}
+	return PhatState_OK;
+}
+
 static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem_p dir_item)
 {
 	PhatState ret = PhatState_OK;
@@ -816,8 +844,8 @@ static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem_p dir_ite
 	uint32_t cur_diritem_in_cur_cluster = dir_info->cur_diritem % phat->num_diritems_in_a_cluster;
 
 	if (dir_info->dir_start_cluster == 0) return PhatState_EndOfDirectory;
-	if (dir_info->dir_current_cluster < 2) return PhatState_InternalError;
-	if (dir_info->dir_current_cluster > phat->max_valid_cluster) return PhatState_FATError;
+	ret = Phat_UpdateClusterByDirItemIndex(dir_info);
+	if (ret != PhatState_OK) return ret;
 	if (phat->FAT_bits == 32)
 		dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
 	else // Root directory in FAT12/16
@@ -851,8 +879,8 @@ static PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_DirItem_p d
 		ret = Phat_WipeCluster(phat, new_cluster);
 		if (ret != PhatState_OK) return ret;
 	}
-	if (dir_info->dir_current_cluster < 2) return PhatState_InternalError;
-	if (dir_info->dir_current_cluster > phat->max_valid_cluster) return PhatState_FATError;
+	ret = Phat_UpdateClusterByDirItemIndex(dir_info);
+	if (ret != PhatState_OK) return ret;
 	if (phat->FAT_bits == 32)
 		dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
 	else // Root directory in FAT12/16
@@ -910,31 +938,8 @@ static PhatBool_t Phat_IsValidLFNEntry(Phat_DirItem_p lfn_item)
 
 static PhatState Phat_MoveToNextDirItem(Phat_DirInfo_p dir_info)
 {
-	PhatState ret = PhatState_OK;
-	uint32_t next_cluster;
-	Phat_p phat = dir_info->phat;
-	uint32_t cur_diritem_in_cur_cluster;
-
 	dir_info->cur_diritem++;
-	cur_diritem_in_cur_cluster = dir_info->cur_diritem % phat->num_diritems_in_a_cluster;
-	if (cur_diritem_in_cur_cluster == 0)
-	{
-		ret = Phat_GetFATNextCluster(phat, dir_info->dir_current_cluster, &next_cluster);
-		if (ret == PhatState_OK)
-		{
-			dir_info->dir_current_cluster = next_cluster;
-		}
-		else if (ret == PhatState_EndOfFATChain)
-		{
-			dir_info->cur_diritem--;
-			return PhatState_EndOfDirectory;
-		}
-		else
-		{
-			return ret;
-		}
-	}
-	return ret;
+	return Phat_UpdateClusterByDirItemIndex(dir_info);
 }
 
 static PhatState Phat_MoveToNextDirItemWithAllocation(Phat_DirInfo_p dir_info)
@@ -1232,6 +1237,7 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 		{
 			dir_info->dir_start_cluster = cur_dir_cluster;
 			dir_info->dir_current_cluster = cur_dir_cluster;
+			dir_info->dir_current_cluster_index = 0;
 			dir_info->cur_diritem = 0;
 			for (;;)
 			{
@@ -1260,6 +1266,7 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 			cur_dir_cluster = dir_info->first_cluster;
 			dir_info->dir_start_cluster = cur_dir_cluster;
 			dir_info->dir_current_cluster = cur_dir_cluster;
+			dir_info->dir_current_cluster_index = 0;
 			dir_info->cur_diritem = 0;
 			return PhatState_OK;
 		}

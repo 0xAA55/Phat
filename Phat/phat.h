@@ -102,6 +102,7 @@ typedef struct Phat_DirInfo_s
 	Phat_p phat;
 	uint32_t dir_start_cluster;
 	uint32_t dir_current_cluster;
+	uint32_t dir_current_cluster_index;
 	uint32_t cur_diritem;
 	uint8_t file_name_8_3[11];
 	uint8_t attributes;

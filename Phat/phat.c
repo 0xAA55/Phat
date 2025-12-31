@@ -2053,3 +2053,59 @@ PhatState Phat_RemoveDirectory(Phat_p phat, WChar_p path)
 		}
 	}
 }
+
+PhatState Phat_DeleteFile(Phat_p phat, WChar_p path)
+{
+	PhatState ret;
+	Phat_DirInfo_t dir_info;
+	size_t name_len;
+
+	Phat_NormalizePath(path);
+	Phat_PathToName(path, phat->filename_buffer);
+	Phat_ToUpperDirectoryPath(path);
+	name_len = (size_t)(Phat_ToEndOfString(phat->filename_buffer) - phat->filename_buffer);
+
+	ret = Phat_OpenDir(phat, path, &dir_info);
+	if (ret != PhatState_OK) return ret;
+
+	for (;;)
+	{
+		uint32_t last_dir_item;
+		uint32_t cur_dir_item;
+		Phat_DirItem_t dir_item;
+		last_dir_item = dir_info.cur_diritem;
+		ret = Phat_NextDirItem(&dir_info);
+		cur_dir_item = dir_info.cur_diritem;
+		if (ret == PhatState_EndOfDirectory)
+		{
+			Phat_CloseDir(&dir_info);
+			return PhatState_InternalError;
+		}
+		else if (ret != PhatState_OK)
+		{
+			Phat_CloseDir(&dir_info);
+			return ret;
+		}
+		if (name_len == dir_info.LFN_length && !memcmp(phat->filename_buffer, dir_info.LFN_name, name_len * sizeof(WChar_t)))
+		{
+			if (dir_info.attributes & ATTRIB_DIRECTORY)
+			{
+				Phat_CloseDir(&dir_info);
+				return PhatState_IsADirectory;
+			}
+			dir_info.dir_current_cluster_index = 0;
+			dir_info.dir_current_cluster = dir_info.dir_start_cluster;
+			for (uint32_t i = last_dir_item; i <= cur_dir_item; i++)
+			{
+				dir_info.cur_diritem = i;
+				ret = Phat_GetDirItem(&dir_info, &dir_item);
+				if (ret != PhatState_OK) return ret;
+				dir_item.file_name_8_3[0] = 0xE5;
+				ret = Phat_PutDirItem(&dir_info, &dir_item);
+				if (ret != PhatState_OK) return ret;
+			}
+			Phat_CloseDir(&dir_info);
+			return PhatState_OK;
+		}
+	}
+}

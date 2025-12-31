@@ -68,8 +68,8 @@ typedef struct Phat_FSInfo_s
 	uint32_t struct_signature;
 	uint32_t free_cluster_count;
 	uint32_t next_free_cluster;
-	uint8_t reserved2[12];
-	uint32_t trail_signature;
+	uint8_t reserved2[14];
+	uint16_t trail_signature;
 }Phat_FSInfo_t, *Phat_FSInfo_p;
 
 typedef struct Phat_DirItem_s

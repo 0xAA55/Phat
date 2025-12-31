@@ -938,7 +938,7 @@ static PhatState Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_
 		if (!wchar) goto Ended;
 	}
 Ended:
-	if (lfn_item->order & 0x40) buffer->LFN_length = write_pos;
+	if (lfn_item->order & 0x40) buffer->LFN_length = write_pos - 1;
 	return PhatState_OK;
 }
 

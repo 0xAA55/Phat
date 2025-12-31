@@ -564,7 +564,7 @@ static PhatState Phat_WipeCluster(Phat_p phat, uint32_t cluster)
 	PhatState ret;
 	static const uint8_t empty_sector[512] = { 0 };
 	LBA_t cluster_LBA = Phat_ClusterToLBA(phat, cluster) + phat->partition_start_LBA;
-	for (size_t i = 0; i < phat->sectors_per_cluster; i++)
+	for (LBA_t i = 0; i < phat->sectors_per_cluster; i++)
 	{
 		LBA_t LBA = cluster_LBA + i;
 		PhatBool_t wiped = 0;

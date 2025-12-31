@@ -1257,7 +1257,7 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 		name_len = (size_t)(ptr - name_start);
 		if (name_len > MAX_LFN) return PhatState_InvalidPath;
 
-		if (*ptr) // is middle path
+		if ((*ptr || name_start == path) && name_len) // is middle path
 		{
 			dir_info->dir_start_cluster = cur_dir_cluster;
 			dir_info->dir_current_cluster = cur_dir_cluster;

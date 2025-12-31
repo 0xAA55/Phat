@@ -109,7 +109,7 @@ typedef struct Phat_DirInfo_s
 	Phat_Date_t mdate;
 	Phat_Time_t mtime;
 	Phat_Date_t adate;
-	uint8_t checksum;
+	uint8_t sfn_checksum;
 	uint32_t file_size;
 	uint32_t first_cluster;
 	WChar_t LFN_name[MAX_LFN + 1];

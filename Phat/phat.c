@@ -989,11 +989,11 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 			if (no_checksum)
 			{
 				no_checksum = 0;
-				dir_info->checksum = lfnitem->checksum;
+				dir_info->sfn_checksum = lfnitem->checksum;
 			}
-			else if (lfnitem->checksum != dir_info->checksum)
+			else if (lfnitem->checksum != dir_info->sfn_checksum)
 			{
-				dir_info->checksum = lfnitem->checksum;
+				dir_info->sfn_checksum = lfnitem->checksum;
 				dir_info->LFN_length = 0;
 			}
 			ret = Phat_SuckLFNIntoBuffer(lfnitem, dir_info);
@@ -1016,7 +1016,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 		else
 		{
 			checksum = Phat_LFN_ChkSum(diritem.file_name_8_3);
-			if (!no_checksum && checksum != dir_info->checksum)
+			if (!no_checksum && checksum != dir_info->sfn_checksum)
 			{
 				dir_info->LFN_length = 0;
 			}

@@ -1148,9 +1148,9 @@ void Phat_NormalizePath(WChar_p path)
 	write_ptr = path;
 	while (*read_ptr == '/' || *read_ptr == '\\') read_ptr++;
 	start_ptr = read_ptr;
-	while (*read_ptr)
+	for (;;)
 	{
-		if (*read_ptr == L'/' || *read_ptr == L'\\')
+		if (*read_ptr == L'/' || *read_ptr == L'\\' || *read_ptr == L'\0')
 		{
 			length = (size_t)(read_ptr - start_ptr);
 			if (length == 1 && start_ptr[0] == L'.')
@@ -1178,6 +1178,7 @@ void Phat_NormalizePath(WChar_p path)
 			{
 				start_ptr = read_ptr + 1;
 			}
+			if (*read_ptr == L'\0') break;
 		}
 		read_ptr++;
 	}

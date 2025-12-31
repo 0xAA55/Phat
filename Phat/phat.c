@@ -142,7 +142,11 @@ static void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p sector)
 	Phat_SectorCache_p next = sector->next;
 	if (prev) prev->next = next;
 	if (next) next->prev = prev;
-	else phat->cache_LRU_tail = prev;
+	else
+	{
+		phat->cache_LRU_tail = prev;
+		if (prev) prev->next = NULL;
+	}
 	if (phat->cache_LRU_head)
 		phat->cache_LRU_head->prev = sector;
 	sector->next = phat->cache_LRU_head;

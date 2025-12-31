@@ -1258,7 +1258,7 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {
 	PhatState ret;
-	WChar_t longname[MAX_LFN + 1];
+	WChar_p longname = phat->filename_buffer;
 	size_t name_len;
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
@@ -1531,7 +1531,7 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 {
 	Phat_DirInfo_t dir_info;
 	PhatState ret = PhatState_OK;
-	WChar_t longname[MAX_LFN + 1];
+	WChar_p longname = phat->filename_buffer;
 	uint8_t name83[11];
 	uint8_t case_info = 0;
 	int only83 = 0;

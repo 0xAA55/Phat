@@ -192,6 +192,7 @@ static PhatState Phat_WriteBackCachedSector(Phat_p phat, Phat_SectorCache_p cach
 	return PhatState_OK;
 }
 
+// Will write back if dirty
 static PhatState Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
 {
 	if (Phat_IsCachedSectorValid(cached_sector) && !Phat_IsCachedSectorSync(cached_sector))
@@ -265,6 +266,7 @@ static void Phat_SetCachedSectorModified(Phat_SectorCache_p p_cached_sector)
 	Phat_SetCachedSectorUnsync(p_cached_sector);
 }
 
+// Will load the sector into cache if not present
 static PhatState Phat_WriteSectorThroughCache(Phat_p phat, LBA_t LBA, const void *buffer)
 {
 	Phat_SectorCache_p cached_sector;
@@ -275,6 +277,7 @@ static PhatState Phat_WriteSectorThroughCache(Phat_p phat, LBA_t LBA, const void
 	return PhatState_OK;
 }
 
+// Will also update cache if present
 static PhatState Phat_ReadSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, void *buffer)
 {
 	if (!phat->driver.fn_read_sector(buffer, LBA, num_sectors, phat->driver.userdata))
@@ -294,6 +297,7 @@ static PhatState Phat_ReadSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num
 	return PhatState_ReadFail;
 }
 
+// Will also update cache if present
 static PhatState Phat_WriteSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, const void *buffer)
 {
 	if (!phat->driver.fn_write_sector(buffer, LBA, num_sectors, phat->driver.userdata))
@@ -385,6 +389,7 @@ PhatState Phat_Init(Phat_p phat)
 	return PhatState_OK;
 }
 
+// Iterate through FAT to find a free cluster
 static PhatState Phat_SearchForFreeCluster(Phat_p phat, uint32_t from_index, uint32_t *cluster_out)
 {
 	PhatState ret;
@@ -402,6 +407,7 @@ static PhatState Phat_SearchForFreeCluster(Phat_p phat, uint32_t from_index, uin
 	return PhatState_NotEnoughSpace;
 }
 
+// Iterate through FAT to count free clusters
 static PhatState Phat_SumFreeClusters(Phat_p phat, uint32_t *num_free_clusters_out)
 {
 	PhatState ret;
@@ -422,11 +428,13 @@ static LBA_t Phat_ClusterToLBA(Phat_p phat, uint32_t cluster)
 	return phat->data_start_LBA + (LBA_t)(cluster - 2) * phat->sectors_per_cluster;
 }
 
+// Find next free cluster starting from phat->next_free_cluster
 static PhatState Phat_SeekForFreeCluster(Phat_p phat, uint32_t *cluster_out)
 {
 	return Phat_SearchForFreeCluster(phat, phat->next_free_cluster - 2, cluster_out);
 }
 
+// Open a partition, load all of the informations from the DBR in order to manipulate files/directories
 PhatState Phat_Mount(Phat_p phat, int partition_index)
 {
 	LBA_t partition_start_LBA = 0;
@@ -441,6 +449,8 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	if (ret != PhatState_OK) return ret;
 
 	mbr = (Phat_MBR_p)cached_sector->data;
+
+	// Incase of there could be a MBR, read partition info and get to the partition's DBR
 	if (Phat_IsSectorMBR(mbr))
 	{
 		if (partition_index < 0 || partition_index >= 4) return PhatState_InvalidParameter;
@@ -486,6 +496,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	}
 	phat->max_valid_cluster = phat->num_FAT_entries + 1;
 
+	// Read FSInfo sector
 	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 1, &cached_sector);
 	if (ret != PhatState_OK) return ret;
 	fsi = (Phat_FSInfo_p)cached_sector->data;
@@ -507,6 +518,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	return PhatState_OK;
 }
 
+// Should be called after some allocations or deletions happened on the FAT
 static PhatState Phat_UpdateFSInfo(Phat_p phat)
 {
 	PhatState ret = PhatState_OK;
@@ -574,6 +586,7 @@ static PhatState Phat_WipeCluster(Phat_p phat, uint32_t cluster)
 	return PhatState_OK;
 }
 
+// Read FAT table by `cluster_index` starting from 0
 static PhatState Phat_ReadFAT(Phat_p phat, uint32_t cluster_index, uint32_t *read_out)
 {
 	PhatState ret = PhatState_OK;
@@ -624,6 +637,7 @@ static PhatState Phat_ReadFAT(Phat_p phat, uint32_t cluster_index, uint32_t *rea
 	return PhatState_OK;
 }
 
+// Write FAT table by `cluster_index` starting from 0
 static PhatState Phat_WriteFAT(Phat_p phat, uint32_t cluster_index, uint32_t write)
 {
 	PhatState ret = PhatState_OK;
@@ -733,6 +747,7 @@ static PhatState Phat_AllocateCluster(Phat_p phat, uint32_t *allocated_cluster)
 	return PhatState_OK;
 }
 
+// The `cur_cluster` is not an index, it's a cluster number.
 static PhatState Phat_GetFATNextCluster(Phat_p phat, uint32_t cur_cluster, uint32_t *next_cluster)
 {
 	PhatState ret = PhatState_OK;
@@ -959,6 +974,7 @@ static PhatState Phat_MoveToNextDirItemWithAllocation(Phat_DirInfo_p dir_info)
 	cur_diritem_in_cur_cluster = dir_info->cur_diritem % phat->num_diritems_in_a_cluster;
 	if (cur_diritem_in_cur_cluster == 0)
 	{
+		dir_info->dir_current_cluster_index++;
 		// Get to next cluster
 		ret = Phat_GetFATNextCluster(phat, dir_info->dir_current_cluster, &next_cluster);
 		if (ret == PhatState_OK)
@@ -1001,6 +1017,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 		if (ret != PhatState_OK) return ret;
 		if (Phat_IsValidLFNEntry(&diritem))
 		{
+			// LFN entry
 			lfnitem = (Phat_LFN_Entry_p)&diritem;
 			if (no_checksum)
 			{
@@ -1019,6 +1036,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 		}
 		else if (diritem.file_name_8_3[0] == 0xE5)
 		{
+			// Deleted entry
 			dir_info->LFN_length = 0;
 			no_checksum = 1;
 			ret = Phat_MoveToNextDirItem(dir_info);
@@ -1026,11 +1044,13 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 		}
 		else if (diritem.file_name_8_3[0] == 0x00)
 		{
+			// End of directory
 			dir_info->LFN_length = 0;
 			return PhatState_EndOfDirectory;
 		}
 		else
 		{
+			// Standard entry
 			checksum = Phat_LFN_ChkSum(diritem.file_name_8_3);
 			if (!no_checksum && checksum != dir_info->sfn_checksum)
 			{
@@ -1047,6 +1067,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 			dir_info->first_cluster = ((uint32_t)diritem.first_cluster_high << 16) | diritem.first_cluster_low;
 			if (dir_info->LFN_length == 0)
 			{
+				// No valid LFN, generate from 8.3 name
 				size_t copy_to = 0;
 				for (size_t i = 0; i < 8; i++)
 				{
@@ -1221,6 +1242,7 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 	size_t name_len;
 	PhatState ret = PhatState_OK;
 
+	// After normalized, all of the slashes were replaced by '/', and the leading/trailing/duplicated slashes were removed
 	Phat_NormalizePath(path);
 	memset(dir_info, 0, sizeof * dir_info);
 	dir_info->phat = phat;
@@ -1273,6 +1295,7 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 	}
 }
 
+// Open a dir to the path, find the item if can (`PhatState_OK` will be returned), or return `PhatState_EndOfDirectory`
 static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {
 	PhatState ret;

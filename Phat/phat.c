@@ -280,8 +280,20 @@ static PhatState Phat_ReadSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num
 
 static PhatState Phat_WriteSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, const void *buffer)
 {
-	if (phat->driver.fn_write_sector(buffer, LBA, num_sectors, phat->driver.userdata))
-		return PhatState_OK;
+	if (!phat->driver.fn_write_sector(buffer, LBA, num_sectors, phat->driver.userdata))
+	{
+		return PhatState_WriteFail;
+	}
+	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
+	{
+		Phat_SectorCache_p cached_sector = &phat->cache[i];
+		if (Phat_IsCachedSectorValid(cached_sector) && cached_sector->LBA >= LBA && cached_sector->LBA < LBA + num_sectors)
+		{
+			uint8_t *copy_from = (uint8_t *)buffer + (cached_sector->LBA - LBA) * 512;
+			memcpy(cached_sector->data, copy_from, 512);
+			Phat_SetCachedSectorSync(cached_sector);
+		}
+	}
 	return PhatState_WriteFail;
 }
 

@@ -139,8 +139,8 @@ typedef enum PhatState_e
 	PhatState_FSNotFat,
 	PhatState_FATError,
 	PhatState_FSError,
-	PhatState_DirectoryNotFound,
 	PhatState_FileNotFound,
+	PhatState_DirectoryNotFound,
 	PhatState_IsADirectory,
 	PhatState_NotADirectory,
 	PhatState_InvalidPath,
@@ -148,6 +148,9 @@ typedef enum PhatState_e
 	PhatState_EndOfFATChain,
 	PhatState_EndOfFile,
 	PhatState_NotEnoughSpace,
+	PhatState_DirectoryNotEmpty,
+	PhatState_FileAlreadyExists,
+	PhatState_DirectoryAlreadyExists,
 }PhatState;
 
 #define ATTRIB_READ_ONLY 0x01

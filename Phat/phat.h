@@ -92,6 +92,8 @@ typedef struct Phat_s
 	PhatBool_t has_FSInfo;
 	uint32_t free_clusters;
 	uint32_t next_free_cluster;
+	uint32_t max_valid_cluster;
+	uint32_t end_of_cluster_chain;
 }Phat_t, *Phat_p;
 
 typedef struct Phat_DirInfo_s

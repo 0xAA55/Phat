@@ -457,6 +457,13 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
 	phat->num_FAT_entries = (phat->FAT_size_in_sectors * phat->bytes_per_sector * 8) / phat->FAT_bits;
 	phat->FATs_are_same = !dbr->FATs_are_different;
+	switch (phat->FAT_bits)
+	{
+	case 12: phat->end_of_cluster_chain = 0x0FF8; break;
+	case 16: phat->end_of_cluster_chain = 0xFFF8; break;
+	case 32: phat->end_of_cluster_chain = 0x0FFFFFF8; break;
+	}
+	phat->max_valid_cluster = phat->num_FAT_entries + 1;
 
 	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 1, &cached_sector);
 	if (ret != PhatState_OK) return ret;

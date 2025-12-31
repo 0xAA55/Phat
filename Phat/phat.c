@@ -135,6 +135,20 @@ static WChar_t Cp437_To_Unicode(uint8_t cp437_char)
 		return Cp437_UpperPart[cp437_char - 0x80];
 }
 
+static void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p sector)
+{
+	Phat_SectorCache_p prev = sector->prev;
+	Phat_SectorCache_p next = sector->next;
+	if (prev) prev->next = next;
+	if (next) next->prev = prev;
+	else phat->cache_LRU_tail = prev;
+	if (phat->cache_LRU_head)
+		phat->cache_LRU_head->prev = sector;
+	sector->next = phat->cache_LRU_head;
+	sector->prev = NULL;
+	phat->cache_LRU_head = sector;
+}
+
 static PhatBool_t Phat_IsCachedSectorSync(Phat_SectorCache_p cached_sector)
 {
 	return (cached_sector->usage & SECTORCACHE_SYNC) == SECTORCACHE_SYNC;
@@ -148,17 +162,6 @@ static void Phat_SetCachedSectorUnsync(Phat_SectorCache_p cached_sector)
 static void Phat_SetCachedSectorSync(Phat_SectorCache_p cached_sector)
 {
 	cached_sector->usage |= SECTORCACHE_SYNC;
-}
-
-static uint32_t Phat_GetCachedSectorAge(Phat_SectorCache_p cached_sector)
-{
-	return cached_sector->usage & SECTORCACHE_AGE_BM;
-}
-
-static void Phat_SetCachedSectorAge(Phat_SectorCache_p cached_sector, uint32_t age)
-{
-	cached_sector->usage &= ~SECTORCACHE_AGE_BM;
-	cached_sector->usage |= (age & SECTORCACHE_AGE_BM);
 }
 
 static PhatBool_t Phat_IsCachedSectorValid(Phat_SectorCache_p cached_sector)
@@ -201,40 +204,55 @@ static PhatState Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorCache_p cac
 static PhatState Phat_ReadSectorThroughCache(Phat_p phat, LBA_t LBA, Phat_SectorCache_p *pp_cached_sector)
 {
 	PhatState ret = PhatState_OK;
-	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
+	Phat_SectorCache_p cache = phat->cache_LRU_head;
+
+	if (!cache)
 	{
-		Phat_SectorCache_p cached_sector = &phat->cache[i];
-		if (Phat_IsCachedSectorValid(cached_sector) && phat->cache[i].LBA == LBA)
+		Phat_SectorCache_p ret_sector = &phat->cache[0];
+		phat->cache_LRU_head = ret_sector;
+		phat->cache_LRU_tail = &phat->cache[PHAT_CACHED_SECTORS - 1];
+		for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
 		{
-			*pp_cached_sector = cached_sector;
-			Phat_SetCachedSectorAge(cached_sector, phat->LRU_age);
-			return PhatState_OK;
+			Phat_SectorCache_p cached_sector = &phat->cache[i];
+			cached_sector->prev = (i == 0) ? NULL : &phat->cache[i - 1];
+			cached_sector->next = (i == PHAT_CACHED_SECTORS - 1) ? NULL : &phat->cache[i + 1];
+			cached_sector->usage = 0;
 		}
+		if (!phat->driver.fn_read_sector(ret_sector->data, LBA, 1, phat->driver.userdata))
+		{
+			return PhatState_ReadFail;
+		}
+		ret_sector->LBA = LBA;
+		Phat_SetCachedSectorValid(ret_sector);
+		Phat_SetCachedSectorSync(ret_sector);
+		*pp_cached_sector = ret_sector;
+		return PhatState_OK;
 	}
 
-	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
+	while (cache)
 	{
-		Phat_SectorCache_p cached_sector = &phat->cache[i];
-		int MustDo = (i == PHAT_CACHED_SECTORS - 1);
-		if (MustDo || !Phat_IsCachedSectorValid(cached_sector) || phat->LRU_age - Phat_GetCachedSectorAge(cached_sector) >= PHAT_CACHED_SECTORS)
+		if (cache->LBA == LBA && Phat_IsCachedSectorValid(cache))
 		{
-			ret = Phat_InvalidateCachedSector(phat, cached_sector);
-			if (ret != PhatState_OK) return ret;
-			if (!phat->driver.fn_read_sector(cached_sector->data, LBA, 1, phat->driver.userdata))
-			{
-				return PhatState_ReadFail;
-			}
-			phat->LRU_age++;
-			cached_sector->LBA = LBA;
-			Phat_SetCachedSectorValid(cached_sector);
-			Phat_SetCachedSectorSync(cached_sector);
-			Phat_SetCachedSectorAge(cached_sector, phat->LRU_age);
-			*pp_cached_sector = cached_sector;
+			*pp_cached_sector = cache;
+			Phat_MoveCachedSectorHead(phat, cache);
 			return PhatState_OK;
 		}
+		cache = cache->next;
 	}
 
-	return PhatState_InternalError;
+	cache = phat->cache_LRU_tail;
+	ret = Phat_InvalidateCachedSector(phat, cache);
+	if (ret != PhatState_OK) return ret;
+	if (!phat->driver.fn_read_sector(cache->data, LBA, 1, phat->driver.userdata))
+	{
+		return PhatState_ReadFail;
+	}
+	cache->LBA = LBA;
+	Phat_SetCachedSectorValid(cache);
+	Phat_SetCachedSectorSync(cache);
+	*pp_cached_sector = cache;
+	Phat_MoveCachedSectorHead(phat, cache);
+	return PhatState_OK;
 }
 
 static void Phat_SetCachedSectorModified(Phat_SectorCache_p p_cached_sector)

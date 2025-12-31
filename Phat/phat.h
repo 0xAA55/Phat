@@ -11,7 +11,6 @@
 
 #define SECTORCACHE_SYNC 0x80000000
 #define SECTORCACHE_VALID 0x40000000
-#define SECTORCACHE_AGE_BM 0x3FFFFFFF
 
 #ifndef MAX_LFN
 #define MAX_LFN 256
@@ -48,6 +47,8 @@ typedef struct Phat_SectorCache_s
 	uint8_t data[512];
 	LBA_t	LBA;
 	uint32_t usage;
+	struct Phat_SectorCache_s *prev;
+	struct Phat_SectorCache_s *next;
 }Phat_SectorCache_t, *Phat_SectorCache_p;
 
 typedef struct Phat_Date_s
@@ -67,11 +68,12 @@ typedef struct Phat_Time_s
 
 typedef struct Phat_s
 {
-	Phat_SectorCache_t cache[PHAT_CACHED_SECTORS];
 	Phat_Disk_Driver_t driver;
+	Phat_SectorCache_t cache[PHAT_CACHED_SECTORS];
+	Phat_SectorCache_p cache_LRU_head;
+	Phat_SectorCache_p cache_LRU_tail;
 	Phat_Date_t cur_date;
 	Phat_Time_t cur_time;
-	uint32_t LRU_age;
 	LBA_t partition_start_LBA;
 	LBA_t total_sectors;
 	LBA_t FAT_size_in_sectors;

@@ -865,25 +865,25 @@ static PhatState Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_
 	uint8_t order = lfn_item->order & 0x3F;
 	uint16_t write_pos = (order - 1) * 13;
 	if (order < 1) return PhatState_FSError;
-	if (write_pos >= MAX_LFN) return PhatState_FSError;
+	if (write_pos > MAX_LFN) return PhatState_FSError;
 	for (size_t i = 0; i < 5; i++)
 	{
 		WChar_t wchar = lfn_item->name1[i];
-		if (write_pos >= MAX_LFN) goto Ended;
+		if (write_pos > MAX_LFN) goto Ended;
 		buffer->LFN_name[write_pos++] = wchar;
 		if (!wchar) goto Ended;
 	}
 	for (size_t i = 0; i < 6; i++)
 	{
 		WChar_t wchar = lfn_item->name2[i];
-		if (write_pos >= MAX_LFN) goto Ended;
+		if (write_pos > MAX_LFN) goto Ended;
 		buffer->LFN_name[write_pos++] = wchar;
 		if (!wchar) goto Ended;
 	}
 	for (size_t i = 0; i < 2; i++)
 	{
 		WChar_t wchar = lfn_item->name3[i];
-		if (write_pos >= MAX_LFN) goto Ended;
+		if (write_pos > MAX_LFN) goto Ended;
 		buffer->LFN_name[write_pos++] = wchar;
 		if (!wchar) goto Ended;
 	}
@@ -1258,7 +1258,7 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {
 	PhatState ret;
-	WChar_t longname[MAX_LFN];
+	WChar_t longname[MAX_LFN + 1];
 	size_t name_len;
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
@@ -1314,7 +1314,7 @@ PhatBool_t Phat_IsValidFilename(WChar_p filename)
 {
 	size_t length = 0;
 	while (filename[length]) length++;
-	if (length == 0 || length >= MAX_LFN) return 0;
+	if (length == 0 || length > MAX_LFN) return 0;
 	for (size_t i = 0; i < length; i++)
 	{
 		WChar_t ch = filename[i];
@@ -1531,7 +1531,7 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 {
 	Phat_DirInfo_t dir_info;
 	PhatState ret = PhatState_OK;
-	WChar_t longname[MAX_LFN];
+	WChar_t longname[MAX_LFN + 1];
 	uint8_t name83[11];
 	uint8_t case_info = 0;
 	int only83 = 0;

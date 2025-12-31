@@ -13,7 +13,7 @@
 #define SECTORCACHE_VALID 0x40000000
 
 #ifndef MAX_LFN
-#define MAX_LFN 256
+#define MAX_LFN 255
 #endif
 
 #ifndef PHAT_DEFAULT_YEAR
@@ -112,7 +112,7 @@ typedef struct Phat_DirInfo_s
 	uint8_t checksum;
 	uint32_t file_size;
 	uint32_t first_cluster;
-	WChar_t LFN_name[MAX_LFN];
+	WChar_t LFN_name[MAX_LFN + 1];
 	uint16_t LFN_length;
 }Phat_DirInfo_t, *Phat_DirInfo_p;
 

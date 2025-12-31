@@ -1266,6 +1266,61 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 	}
 }
 
+static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
+{
+	PhatState ret;
+	WChar_t longname[MAX_LFN];
+	size_t name_len;
+
+	ret = Phat_OpenDir(phat, path, &dir_info);
+	if (ret != PhatState_OK) return ret;
+
+	Phat_PathToName(path, longname);
+	name_len = (size_t)(Phat_ToEndOfString(longname) - longname);
+
+	for (;;)
+	{
+		ret = Phat_NextDirItem(&dir_info);
+		if (ret != PhatState_OK) return ret;
+		if (dir_info->LFN_length == name_len && !memcmp(longname, dir_info->LFN_name, name_len * sizeof(WChar_t)))
+		{
+			return PhatState_OK;
+		}
+	}
+}
+
+static PhatState Phat_FindFile(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
+{
+	PhatState ret = Phat_FindItem(phat, path, dir_info);
+	switch (ret)
+	{
+	case PhatState_OK:
+		if (dir_info->attributes & ATTRIB_DIRECTORY)
+			return PhatState_IsADirectory;
+		return PhatState_OK;
+	case PhatState_EndOfDirectory:
+		return PhatState_FileNotFound;
+	default:
+		return ret;
+	}
+}
+
+static PhatState Phat_FindDirectory(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
+{
+	PhatState ret = Phat_FindItem(phat, path, dir_info);
+	switch (ret)
+	{
+	case PhatState_OK:
+		if (dir_info->attributes & ATTRIB_DIRECTORY)
+			return PhatState_OK;
+		return PhatState_NotADirectory;
+	case PhatState_EndOfDirectory:
+		return PhatState_DirectoryNotFound;
+	default:
+		return ret;
+	}
+}
+
 PhatBool_t Phat_IsValidFilename(WChar_p filename)
 {
 	size_t length = 0;

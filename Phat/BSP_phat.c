@@ -71,7 +71,7 @@ static PhatBool_t MountVHD()
 		return 0;
 	}
 
-	result = AttachVirtualDisk(vhd_handle, NULL, ATTACH_VIRTUAL_DISK_FLAG_NONE, 0, NULL, NULL);
+	result = AttachVirtualDisk(vhd_handle, NULL, ATTACH_VIRTUAL_DISK_FLAG_PERMANENT_LIFETIME, 0, NULL, NULL);
 	if (result)
 	{
 		ShowError(result, "Mounting VHD");

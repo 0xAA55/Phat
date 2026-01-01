@@ -2121,9 +2121,18 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 	Phat_NormalizePath(path);
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
-	ret = Phat_NextDirItem(&dir_info);
-	if (ret == PhatState_OK) return PhatState_DirectoryNotEmpty;
-	if (ret != PhatState_EndOfDirectory) return ret;
+	for (;;)
+	{
+		ret = Phat_NextDirItem(&dir_info);
+		if (ret == PhatState_OK)
+		{
+			if (!Phat_Wcscmp(dir_info.LFN_name, L".")) continue;
+			if (!Phat_Wcscmp(dir_info.LFN_name, L"..")) continue;
+			return PhatState_DirectoryNotEmpty;
+		}
+		if (ret == PhatState_EndOfDirectory) break;
+		else return ret;
+	}
 	Phat_CloseDir(&dir_info);
 
 	Phat_PathToName(path, phat->filename_buffer);
@@ -2225,3 +2234,4 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 		}
 	}
 }
+

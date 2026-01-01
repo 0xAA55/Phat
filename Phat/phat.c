@@ -228,6 +228,7 @@ void Phat_NormalizePath(WChar_p path)
 	read_ptr = path;
 	write_ptr = path;
 	while (*read_ptr == '/' || *read_ptr == '\\') read_ptr++;
+	if (read_ptr > path && (*(read_ptr - 1) == '/' || *(read_ptr - 1) == '\\')) read_ptr--;
 	start_ptr = read_ptr;
 	for (;;)
 	{

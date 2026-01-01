@@ -1338,7 +1338,7 @@ PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 				{
 					return ret;
 				}
-				if (!memcmp(dir_info->LFN_name, name_start, name_len * sizeof(WChar_t)) && name_len == dir_info->LFN_length)
+				if (name_len == dir_info->LFN_length && !memcmp(dir_info->LFN_name, name_start, name_len * sizeof(WChar_t)))
 				{
 					if ((dir_info->attributes & ATTRIB_DIRECTORY) == 0)
 					{
@@ -1396,7 +1396,7 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 	ret = Phat_OpenUpperDir(phat, path, dir_info);
 	if (ret != PhatState_OK) return ret;
 
-	name_len = (size_t)(Phat_ToEndOfString(longname) - longname);
+	name_len = Phat_Wcslen(longname);
 
 	for (;;)
 	{
@@ -2175,7 +2175,7 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 	Phat_NormalizePath(path);
 	Phat_PathToName(path, phat->filename_buffer);
 	Phat_ToUpperDirectoryPath(path);
-	name_len = (size_t)(Phat_ToEndOfString(phat->filename_buffer) - phat->filename_buffer);
+	name_len = Phat_Wcslen(phat->filename_buffer);
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;

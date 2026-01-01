@@ -1934,7 +1934,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	if (file_info->file_pointer + bytes_to_read > file_info->file_size)
 		bytes_to_read = file_info->file_size - file_info->file_pointer;
 	offset_in_sector = file_info->file_pointer % 512;
-	ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA);
+	ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 0);
 	if (ret != PhatState_OK) return ret;
 	if (offset_in_sector)
 	{
@@ -1957,7 +1957,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	while (sectors_to_read)
 	{
 		sectors_to_read--;
-		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA);
+		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 0);
 		if (ret != PhatState_OK) return ret;
 		if (FPLBA == file_info->sector_buffer_LBA)
 		{
@@ -1975,7 +1975,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	}
 	if (bytes_to_read)
 	{
-		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA);
+		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 0);
 		if (ret != PhatState_OK) return ret;
 		if (file_info->sector_buffer_LBA != FPLBA)
 		{

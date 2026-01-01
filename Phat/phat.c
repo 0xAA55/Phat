@@ -2179,7 +2179,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 	Phat_PathToName(path, phat->filename_buffer);
 	name_len = Phat_Wcslen(phat->filename_buffer);
 
-	if (parent_dir_start_cluster < 2) return PhatState_FSError;
+	if (parent_dir_start_cluster == 0) parent_dir_start_cluster = phat->root_dir_cluster;
 
 	// Get to ".."
 	dir_info.dir_start_cluster = parent_dir_start_cluster;

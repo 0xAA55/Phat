@@ -827,7 +827,7 @@ static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info)
 	uint32_t cluster_index;
 	uint32_t next_cluster;
 	if (dir_info->dir_start_cluster < 2) return PhatState_InvalidParameter;
-	cluster_index = dir_info->cur_diritem / phat->sectors_per_cluster;
+	cluster_index = dir_info->cur_diritem / phat->num_diritems_in_a_cluster;
 	if (dir_info->dir_current_cluster_index > cluster_index)
 	{
 		dir_info->dir_current_cluster_index = 0;

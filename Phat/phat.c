@@ -163,7 +163,7 @@ const char *Phat_StateToString(PhatState s)
 		"File is already exists",
 		"Directory is already exists",
 	};
-	if (s >= PhatState_LastError) return "InvalidStateNumber";
+	if (s >= PhatState_LastState) return "InvalidStateNumber";
 	else return strlist[s];
 }
 

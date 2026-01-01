@@ -160,6 +160,7 @@ typedef enum PhatState_e
 	PhatState_DirectoryNotEmpty,
 	PhatState_FileAlreadyExists,
 	PhatState_DirectoryAlreadyExists,
+	PhatState_LastState,
 }PhatState;
 
 #define ATTRIB_READ_ONLY 0x01

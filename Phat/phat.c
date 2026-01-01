@@ -1341,31 +1341,59 @@ PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {
 	PhatState ret;
-	WChar_p longname = phat->filename_buffer;
-	size_t name_len;
+	WChar_p dirname_ptr;
+	WChar_p end_of_dirname;
+	size_t dirname_len;
 
-	Phat_PathToName(path, longname);
-	if (longname[0] == L'\0') return PhatState_InvalidParameter;
+	if (!path) return PhatState_InvalidParameter;
 
-	ret = Phat_OpenUpperDir(phat, path, dir_info);
-	if (ret != PhatState_OK) return ret;
+	if (dir_info->dir_current_cluster < 2) Phat_OpenRootDir(phat, dir_info);
 
-	name_len = Phat_Wcslen(longname);
+	dirname_ptr = path;
+	dir_info->cur_diritem = 0;
 
 	for (;;)
 	{
+		end_of_dirname = dirname_ptr;
+		while (*end_of_dirname != 0 && *end_of_dirname != L'/' && *end_of_dirname != L'\\') end_of_dirname++;
+		dirname_len = (size_t)(end_of_dirname - dirname_ptr);
+		if (dirname_len == 0) return PhatState_InvalidParameter;
 		ret = Phat_NextDirItem(dir_info);
-		if (ret != PhatState_OK) return ret;
-		if (dir_info->LFN_length == name_len && !memcmp(longname, dir_info->LFN_name, name_len * sizeof(WChar_t)))
+		if (ret == PhatState_OK)
 		{
-			return PhatState_OK;
+			if (dirname_len == dir_info->LFN_length &&
+				!memcmp(dirname_ptr, dir_info->LFN_name, dirname_len * sizeof(WChar_t)))
+			{
+				uint32_t dir_cluster;
+				if (*end_of_dirname == 0) return PhatState_OK;
+				if ((dir_info->attributes & ATTRIB_DIRECTORY) == 0) return PhatState_NotADirectory;
+				end_of_dirname++;
+				while (*end_of_dirname == L'/' || *end_of_dirname == L'\\')end_of_dirname++;
+				dirname_ptr = end_of_dirname;
+				dir_cluster = dir_info->first_cluster;
+				dir_info->dir_start_cluster = dir_cluster;
+				dir_info->dir_current_cluster = dir_cluster;
+				dir_info->dir_current_cluster_index = 0;
+				dir_info->cur_diritem = 0;
+			}
+		}
+		else if (ret == PhatState_EndOfDirectory)
+		{
+			if (*end_of_dirname == 0) return ret;
+			return PhatState_DirectoryNotFound;
+		}
+		else
+		{
+			return ret;
 		}
 	}
 }
 
 static PhatState Phat_FindFile(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {
-	PhatState ret = Phat_FindItem(phat, path, dir_info);
+	PhatState ret;
+	Phat_OpenRootDir(phat, dir_info);
+	ret = Phat_FindItem(phat, path, dir_info);
 	switch (ret)
 	{
 	case PhatState_OK:
@@ -1381,7 +1409,9 @@ static PhatState Phat_FindFile(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 
 static PhatState Phat_FindDirectory(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {
-	PhatState ret = Phat_FindItem(phat, path, dir_info);
+	PhatState ret;
+	Phat_OpenRootDir(phat, dir_info);
+	ret = Phat_FindItem(phat, path, dir_info);
 	switch (ret)
 	{
 	case PhatState_OK:

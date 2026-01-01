@@ -13,7 +13,7 @@ void Error_Handler()
 
 #define V(x) if (x != PhatState_OK) Error_Handler()
 
-int main()
+int main(int argc, char**argv)
 {
 	Phat_DirInfo_t dir_info;
 	WChar_t path[256] = L"";

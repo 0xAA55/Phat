@@ -1296,14 +1296,17 @@ void Phat_PathToNameInPlace(WChar_p path)
 	Phat_PathToName(path, path);
 }
 
-PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
+PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 {
 	LBA_t cur_dir_sector = phat->root_dir_start_LBA;
 	uint32_t cur_dir_cluster = phat->root_dir_cluster;
-	WChar_p ptr = path;
+	WChar_p ptr;
 	WChar_p name_start;
 	size_t name_len;
 	PhatState ret = PhatState_OK;
+
+	Phat_MovePathToEditablePlace(phat, &path);
+	ptr = path;
 
 	// After normalized, all of the slashes were replaced by '/', and the leading/trailing/duplicated slashes were removed
 	Phat_NormalizePath(path);
@@ -1358,11 +1361,14 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 	}
 }
 
-static PhatState Phat_OpenUpperDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
+static PhatState Phat_OpenUpperDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 {
 	PhatState ret;
-	WChar_p chr = Phat_ToEndOfString(path);
+	WChar_p chr;
 	static WChar_t root_dir[1];
+
+	Phat_MovePathToEditablePlace(phat, &path);
+	chr = Phat_ToEndOfString(path);
 	while (chr > path)
 	{
 		chr--;
@@ -1511,6 +1517,8 @@ static PhatState Phat_FindShortFileName(Phat_p phat, WChar_p path, uint8_t *sfn8
 	PhatState ret;
 	Phat_DirInfo_t dir_info;
 
+	Phat_MovePathToEditablePlace(phat, &path);
+
 	*found = 0;
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
@@ -1545,6 +1553,8 @@ static PhatState Phat_Gen83NameForLongFilename(Phat_p phat, WChar_p path, uint8_
 	WChar_p filename;
 	WChar_t buffer[MAX_LFN + 1];
 	int num_trailing_dots = 0;
+
+	Phat_MovePathToEditablePlace(phat, &path);
 
 	filename = buffer;
 	memset(sfn83, 0x20, 11);
@@ -1701,6 +1711,8 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	Phat_DirItem_t dir_item;
 	WChar_p ptr;
 	uint32_t first_cluster = 0;
+
+	Phat_MovePathToEditablePlace(phat, &path);
 
 	Phat_NormalizePath(path);
 	ptr = Phat_ToEndOfString(path);
@@ -1895,11 +1907,12 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	return PhatState_OK;
 }
 
-PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
+PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
 {
 	Phat_DirInfo_t dir_info;
 	PhatState ret = PhatState_OK;
 
+	Phat_MovePathToEditablePlace(phat, &path);
 	Phat_NormalizePath(path);
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
@@ -2089,17 +2102,18 @@ void Phat_CloseFile(Phat_FileInfo_p file_info)
 	memset(file_info, 0, sizeof * file_info);
 }
 
-PhatState Phat_CreateDirectory(Phat_p phat, WChar_p path)
+PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path)
 {
 	return Phat_CreateNewItemInDir(phat, path, ATTRIB_DIRECTORY);
 }
 
-PhatState Phat_RemoveDirectory(Phat_p phat, WChar_p path)
+PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 {
 	PhatState ret;
 	Phat_DirInfo_t dir_info;
 	size_t name_len;
 
+	Phat_MovePathToEditablePlace(phat, &path);
 	Phat_NormalizePath(path);
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
@@ -2110,7 +2124,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, WChar_p path)
 
 	Phat_PathToName(path, phat->filename_buffer);
 	Phat_ToUpperDirectoryPath(path);
-	name_len = (size_t)(Phat_ToEndOfString(phat->filename_buffer) - phat->filename_buffer);
+	name_len = Phat_Wcslen(phat->filename_buffer);
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
@@ -2151,12 +2165,13 @@ PhatState Phat_RemoveDirectory(Phat_p phat, WChar_p path)
 	}
 }
 
-PhatState Phat_DeleteFile(Phat_p phat, WChar_p path)
+PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 {
 	PhatState ret;
 	Phat_DirInfo_t dir_info;
 	size_t name_len;
 
+	Phat_MovePathToEditablePlace(phat, &path);
 	Phat_NormalizePath(path);
 	Phat_PathToName(path, phat->filename_buffer);
 	Phat_ToUpperDirectoryPath(path);

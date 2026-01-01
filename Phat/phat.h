@@ -184,20 +184,22 @@ PhatState Phat_FlushCache(Phat_p phat);
 PhatState Phat_Unmount(Phat_p phat);
 void Phat_SetCurDateTime(Phat_p phat, Phat_Date_p cur_date, Phat_Time_p cur_time);
 
-PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info);
+PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info);
 PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
 void Phat_CloseDir(Phat_DirInfo_p dir_info);
 
-PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
+PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
 PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_to_read, uint32_t *bytes_read);
 void Phat_CloseFile(Phat_FileInfo_p file_info);
 
 PhatState Phat_SeekFile(Phat_FileInfo_p file_info, uint32_t position);
 void Phat_GetFilePointer(Phat_FileInfo_p file_info, uint32_t *position);
 void Phat_GetFileSize(Phat_FileInfo_p file_info, uint32_t *size);
-PhatState Phat_CreateDirectory(Phat_p phat, WChar_p path);
-PhatState Phat_RemoveDirectory(Phat_p phat, WChar_p path);
-PhatState Phat_DeleteFile(Phat_p phat, WChar_p path);
+
+PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path);
+PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path);
+PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path);
+
 const char *Phat_StateToString(PhatState s);
 
 #endif

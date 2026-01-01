@@ -1193,6 +1193,7 @@ void Phat_PathToName(WChar_p path, WChar_p name)
 {
 	WChar_p chr = Phat_ToEndOfString(path);
 	size_t length = 0;
+	// Remove trailing slashes
 	while (chr > path)
 	{
 		if (*chr == L'/' || *chr == L'\\')
@@ -1200,6 +1201,7 @@ void Phat_PathToName(WChar_p path, WChar_p name)
 		else
 			break;
 	}
+	// Get trailing filename start position and name
 	while (chr > path)
 	{
 		if (*chr != L'/' && *chr != L'\\')
@@ -1212,21 +1214,16 @@ void Phat_PathToName(WChar_p path, WChar_p name)
 			break;
 		}
 	}
+	// Make sure `chr` points to the name
 	if (*chr == L'/' || *chr == L'\\')
 	{
 		chr++;
 		length--;
 	}
-	if (chr > path)
+	if (length > MAX_LFN) length = MAX_LFN;
+	for (size_t i = 0; i <= length; i++)
 	{
-		for (size_t i = 0; i <= length; i++)
-		{
-			name[i] = chr[i];
-		}
-	}
-	else
-	{
-		name[0] = L'\0';
+		name[i] = chr[i];
 	}
 }
 

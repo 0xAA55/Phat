@@ -192,4 +192,6 @@ void Phat_GetFileSize(Phat_FileInfo_p file_info, uint32_t *size);
 PhatState Phat_CreateDirectory(Phat_p phat, WChar_p path);
 PhatState Phat_RemoveDirectory(Phat_p phat, WChar_p path);
 PhatState Phat_DeleteFile(Phat_p phat, WChar_p path);
+const char *Phat_StateToString(PhatState s);
+
 #endif

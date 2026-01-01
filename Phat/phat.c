@@ -136,6 +136,38 @@ static WChar_t Cp437_To_Unicode(uint8_t cp437_char)
 		return Cp437_UpperPart[cp437_char - 0x80];
 }
 
+const char *Phat_StateToString(PhatState s)
+{
+	static const char *strlist[] =
+	{
+		"OK",
+		"InvalidParameter",
+		"InternalError",
+		"DriverError",
+		"ReadFail",
+		"WriteFail",
+		"PartitionTableError",
+		"FSNotFat",
+		"FATError",
+		"FSError",
+		"FileNotFound",
+		"DirectoryNotFound",
+		"IsADirectory",
+		"NotADirectory",
+		"InvalidPath",
+		"EndOfDirectory",
+		"EndOfFATChain",
+		"EndOfFile",
+		"NotEnoughSpace",
+		"DirectoryNotEmpty",
+		"FileAlreadyExists",
+		"DirectoryAlreadyExists",
+		"LastError",
+	};
+	if (s >= PhatState_LastError) return "InvalidStateNumber";
+	else return strlist[s];
+}
+
 static void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p sector)
 {
 	Phat_SectorCache_p prev = sector->prev;

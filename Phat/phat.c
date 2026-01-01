@@ -1477,49 +1477,49 @@ static PhatState Phat_Gen83NameForLongFilename(Phat_p phat, WChar_p path, uint8_
 	PhatBool_t found = 0;
 	PhatState ret;
 	WChar_p tail;
-	WChar_p dot;
+	WChar_p ext;
 	WChar_p filename;
+	WChar_t buffer[MAX_LFN + 1];
+	int num_trailing_dots = 0;
 
-	// Find the basename in a path, it's not allowed to have trailing slash in the tail
-	tail = Phat_ToEndOfString(path);
-	while (--tail > path)
-	{
-		if (*tail == L'/' || *tail == L'\\') *tail = L'\0';
-		else break;
-	}
-	filename = tail++;
-	while (filename > path)
-	{
-		if (*filename == L'/' || *filename == L'\\')
-		{
-			filename++;
-			break;
-		}
-		else
-		{
-			filename--;
-		}
-	}
-
+	filename = buffer;
 	memset(sfn83, 0x20, 11);
+
+	Phat_PathToName(path, buffer);
+	tail = Phat_ToEndOfString(filename);
+
+	// Ignore starting dots
 	while (*filename == L'.') filename++;
+
+	// Cut trailing dots
 	while (tail > filename)
 	{
 		tail--;
-		if (*tail == L'.') *tail = L'\0';
-	}
-	dot = tail;
-	while (dot > filename)
-	{
-		dot--;
-		if (*dot == L'.')
+		if (*tail == L'.')
 		{
-			dot++;
+			*tail = L'\0';
+			num_trailing_dots++;
+		}
+		else
+		{
 			break;
 		}
 	}
-	if (dot == filename)
+	ext = tail;
+
+	// Find extension name
+	while (ext > filename)
 	{
+		ext--;
+		if (*ext == L'.')
+		{
+			ext++;
+			break;
+		}
+	}
+	if (ext == filename)
+	{
+		// No extension name
 		for (size_t i = 0; i < 8 && filename[i]; i++)
 		{
 			WChar_t ch = toupper(filename[i]);
@@ -1528,16 +1528,16 @@ static PhatState Phat_Gen83NameForLongFilename(Phat_p phat, WChar_p path, uint8_
 	}
 	else
 	{
-		size_t end = dot - filename;
+		size_t end = ext - filename;
 		if (end > 8) end = 8;
 		for (size_t i = 0; i < end && filename[i]; i++)
 		{
 			WChar_t ch = toupper(filename[i]);
 			sfn83[i] = (uint8_t)ch;
 		}
-		for (size_t i = 0; i < 3 && dot[i]; i++)
+		for (size_t i = 0; i < 3 && ext[i]; i++)
 		{
-			WChar_t ch = toupper(dot[i]);
+			WChar_t ch = toupper(ext[i]);
 			sfn83[8 + i] = (uint8_t)ch;
 		}
 	}
@@ -1546,11 +1546,24 @@ static PhatState Phat_Gen83NameForLongFilename(Phat_p phat, WChar_p path, uint8_
 		memcpy(sfn83, "NONAME", 6);
 	}
 
+	Phat_ToUpperDirectoryPath(path);
 	for (uint32_t index = 1;;)
 	{
 		ret = Phat_FindShortFileName(phat, path, sfn83, &found);
 		if (ret != PhatState_OK) return ret;
-		if (!found) return PhatState_OK;
+		if (!found)
+		{
+			tail = Phat_ToEndOfString(path);
+			if (tail > path) *tail++ = L'/';
+			filename = buffer;
+			while (*filename) *tail++ = *filename++;
+			while (num_trailing_dots)
+			{
+				*tail++ = L'.';
+				num_trailing_dots--;
+			}
+			return PhatState_OK;
+		}
 		if (index < 10)
 		{
 			sfn83[6] = '~';

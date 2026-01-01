@@ -200,6 +200,119 @@ static int Phat_Wcscmp(WChar_p s1, const WChar_p s2)
 	return memcmp(s1, s2, len1 * sizeof(WChar_t));
 }
 
+void Phat_ToUpperDirectoryPath(WChar_p path)
+{
+	size_t length = 0;
+	PhatBool_t tail_trimming = 1;
+	for (length = 0; path[length]; length++) {}
+	while (length > 0)
+	{
+		length--;
+		if (path[length] == '/' || path[length] == '\\')
+		{
+			if (!tail_trimming)
+				return;
+		}
+		else
+			tail_trimming = 0;
+		path[length] = L'\0';
+	}
+}
+
+void Phat_NormalizePath(WChar_p path)
+{
+	WChar_p read_ptr;
+	WChar_p write_ptr;
+	WChar_p start_ptr;
+	size_t length;
+	read_ptr = path;
+	write_ptr = path;
+	while (*read_ptr == '/' || *read_ptr == '\\') read_ptr++;
+	start_ptr = read_ptr;
+	for (;;)
+	{
+		if (*read_ptr == L'/' || *read_ptr == L'\\' || *read_ptr == L'\0')
+		{
+			length = (size_t)(read_ptr - start_ptr);
+			if (length == 1 && start_ptr[0] == L'.')
+			{
+				start_ptr = read_ptr + 1;
+				*write_ptr = L'\0';
+			}
+			else if (length == 2 && start_ptr[0] == L'.' && start_ptr[1] == L'.')
+			{
+				*start_ptr = L'\0';
+				Phat_ToUpperDirectoryPath(path);
+				write_ptr = Phat_ToEndOfString(path);
+				start_ptr = read_ptr + 1;
+			}
+			else if (length)
+			{
+				while (start_ptr < read_ptr)
+				{
+					*write_ptr++ = *start_ptr++;
+				}
+				*write_ptr++ = L'/';
+				start_ptr = read_ptr + 1;
+			}
+			else
+			{
+				start_ptr = read_ptr + 1;
+			}
+			if (*read_ptr == L'\0') break;
+		}
+		read_ptr++;
+	}
+	*write_ptr = L'\0';
+	if (write_ptr > path && (*(write_ptr - 1) == L'/' || *(write_ptr - 1) == L'\\'))
+	{
+		*(write_ptr - 1) = L'\0';
+	}
+}
+
+void Phat_PathToName(WChar_p path, WChar_p name)
+{
+	WChar_p chr = Phat_ToEndOfString(path);
+	size_t length = 0;
+	// Remove trailing slashes
+	while (chr > path)
+	{
+		if (*chr == L'/' || *chr == L'\\')
+			*chr-- = L'\0';
+		else
+			break;
+	}
+	// Get trailing filename start position and name
+	while (chr > path)
+	{
+		if (*chr != L'/' && *chr != L'\\')
+		{
+			chr--;
+			length++;
+		}
+		else
+		{
+			break;
+		}
+	}
+	// Make sure `chr` points to the name
+	if (*chr == L'/' || *chr == L'\\')
+	{
+		chr++;
+		length--;
+	}
+	if (length > MAX_LFN) length = MAX_LFN;
+	for (size_t i = 0; i <= length; i++)
+	{
+		name[i] = chr[i];
+	}
+}
+
+void Phat_PathToNameInPlace(WChar_p path)
+{
+	Phat_PathToName(path, path);
+}
+
 static void Phat_MovePathToEditablePlace(Phat_p phat, const WChar_p *path)
 {
 	if (*path < phat->path_buffer || *path >= &phat->path_buffer[MAX_PATH])
@@ -1181,119 +1294,6 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 void Phat_CloseDir(Phat_DirInfo_p dir_info)
 {
 	memset(dir_info, 0, sizeof * dir_info);
-}
-
-void Phat_ToUpperDirectoryPath(WChar_p path)
-{
-	size_t length = 0;
-	PhatBool_t tail_trimming = 1;
-	for (length = 0; path[length]; length++) {}
-	while (length > 0)
-	{
-		length--;
-		if (path[length] == '/' || path[length] == '\\')
-		{
-			if (!tail_trimming)
-				return;
-		}
-		else
-			tail_trimming = 0;
-		path[length] = L'\0';
-	}
-}
-
-void Phat_NormalizePath(WChar_p path)
-{
-	WChar_p read_ptr;
-	WChar_p write_ptr;
-	WChar_p start_ptr;
-	size_t length;
-	read_ptr = path;
-	write_ptr = path;
-	while (*read_ptr == '/' || *read_ptr == '\\') read_ptr++;
-	start_ptr = read_ptr;
-	for (;;)
-	{
-		if (*read_ptr == L'/' || *read_ptr == L'\\' || *read_ptr == L'\0')
-		{
-			length = (size_t)(read_ptr - start_ptr);
-			if (length == 1 && start_ptr[0] == L'.')
-			{
-				start_ptr = read_ptr + 1;
-				*write_ptr = L'\0';
-			}
-			else if (length == 2 && start_ptr[0] == L'.' && start_ptr[1] == L'.')
-			{
-				*start_ptr = L'\0';
-				Phat_ToUpperDirectoryPath(path);
-				write_ptr = Phat_ToEndOfString(path);
-				start_ptr = read_ptr + 1;
-			}
-			else if (length)
-			{
-				while (start_ptr < read_ptr)
-				{
-					*write_ptr++ = *start_ptr++;
-				}
-				*write_ptr++ = L'/';
-				start_ptr = read_ptr + 1;
-			}
-			else
-			{
-				start_ptr = read_ptr + 1;
-			}
-			if (*read_ptr == L'\0') break;
-		}
-		read_ptr++;
-	}
-	*write_ptr = L'\0';
-	if (write_ptr > path && (*(write_ptr - 1) == L'/' || *(write_ptr - 1) == L'\\'))
-	{
-		*(write_ptr - 1) = L'\0';
-	}
-}
-
-void Phat_PathToName(WChar_p path, WChar_p name)
-{
-	WChar_p chr = Phat_ToEndOfString(path);
-	size_t length = 0;
-	// Remove trailing slashes
-	while (chr > path)
-	{
-		if (*chr == L'/' || *chr == L'\\')
-			*chr-- = L'\0';
-		else
-			break;
-	}
-	// Get trailing filename start position and name
-	while (chr > path)
-	{
-		if (*chr != L'/' && *chr != L'\\')
-		{
-			chr--;
-			length++;
-		}
-		else
-		{
-			break;
-		}
-	}
-	// Make sure `chr` points to the name
-	if (*chr == L'/' || *chr == L'\\')
-	{
-		chr++;
-		length--;
-	}
-	if (length > MAX_LFN) length = MAX_LFN;
-	for (size_t i = 0; i <= length; i++)
-	{
-		name[i] = chr[i];
-	}
-}
-
-void Phat_PathToNameInPlace(WChar_p path)
-{
-	Phat_PathToName(path, path);
 }
 
 PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)

@@ -2011,6 +2011,11 @@ void Phat_GetFileSize(Phat_FileInfo_p file_info, uint32_t *size)
 	*size = file_info->file_size;
 }
 
+PhatBool_t Phat_IsEOF(Phat_FileInfo_p file_info)
+{
+	return file_info->file_pointer >= file_info->file_size;
+}
+
 PhatState Phat_CloseFile(Phat_FileInfo_p file_info)
 {
 	Phat_DirItem_t diritem;

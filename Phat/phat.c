@@ -1045,6 +1045,7 @@ static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatB
 		{
 			if (!allocate_new_sectors) return PhatState_EndOfDirectory;
 			// Allocate a new cluster
+			next_cluster = dir_info->dir_current_cluster + 1;
 			ret = Phat_AllocateCluster(phat, &next_cluster);
 			if (ret != PhatState_OK) return ret;
 			ret = Phat_WriteFAT(phat, dir_info->dir_current_cluster - 2, next_cluster);
@@ -1102,7 +1103,7 @@ static PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_DirItem_p d
 
 	if (dir_info->dir_start_cluster == 0)
 	{
-		uint32_t new_cluster;
+		uint32_t new_cluster = 0;
 		ret = Phat_AllocateCluster(phat, &new_cluster);
 		if (ret != PhatState_OK) return ret;
 		dir_info->dir_start_cluster = new_cluster;

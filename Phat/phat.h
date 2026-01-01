@@ -121,6 +121,7 @@ typedef struct Phat_DirInfo_s
 typedef struct Phat_FileInfo_s
 {
 	Phat_p phat;
+	Phat_DirInfo_t file_item;
 	uint32_t first_cluster;
 	uint32_t file_pointer;
 	uint32_t cur_cluster;

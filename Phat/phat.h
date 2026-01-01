@@ -128,6 +128,7 @@ typedef struct Phat_FileInfo_s
 	uint32_t cur_cluster_index;
 	uint32_t file_size;
 	PhatBool_t readonly;
+	PhatBool_t modified;
 	uint8_t sector_buffer[512];
 	LBA_t buffer_LBA;
 }Phat_FileInfo_t, *Phat_FileInfo_p;

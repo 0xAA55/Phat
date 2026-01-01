@@ -1956,7 +1956,6 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	sectors_to_read = bytes_to_read / 512;
 	while (sectors_to_read)
 	{
-		sectors_to_read--;
 		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 0);
 		if (ret != PhatState_OK) return ret;
 		if (FPLBA == file_info->sector_buffer_LBA)
@@ -1968,6 +1967,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 			ret = Phat_ReadSectorsWithoutCache(phat, FPLBA, 1, buffer);
 			if (ret != PhatState_OK) return ret;
 		}
+		sectors_to_read--;
 		buffer = (uint8_t *)buffer + 512;
 		file_info->file_pointer += 512;
 		*bytes_read += 512;

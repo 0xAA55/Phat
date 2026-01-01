@@ -173,6 +173,11 @@ static WChar_p Phat_ToEndOfString(WChar_p string)
 	return string;
 }
 
+static size_t Phat_Wcslen(const WChar_p str)
+{
+	return (size_t)(Phat_ToEndOfString(str) - str);
+}
+
 static void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p sector)
 {
 	Phat_SectorCache_p prev = sector->prev;

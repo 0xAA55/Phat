@@ -1911,11 +1911,13 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 {
 	Phat_DirInfo_t dir_info;
 	PhatState ret = PhatState_OK;
+	size_t path_len;
 
 	Phat_MovePathToEditablePlace(phat, &path);
 	Phat_NormalizePath(path);
+	path_len = Phat_Wcslen(path);
 
-	ret = Phat_OpenDir(phat, path, &dir_info);
+	ret = Phat_OpenUpperDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
 	for (;;)
 	{
@@ -1940,7 +1942,7 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 			return ret;
 		}
 
-		if (!memcmp(dir_info.LFN_name, Phat_ToEndOfString(path) - dir_info.LFN_length, dir_info.LFN_length) && dir_info.LFN_length == (size_t)(Phat_ToEndOfString(path) - path))
+		if (dir_info.LFN_length == path_len && !memcmp(dir_info.LFN_name, Phat_ToEndOfString(path) - dir_info.LFN_length, dir_info.LFN_length))
 		{
 			if (dir_info.attributes & ATTRIB_DIRECTORY)
 			{

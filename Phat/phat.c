@@ -184,6 +184,13 @@ static WChar_p Phat_Wcscpy(WChar_p dest, const WChar_p src)
 	return memmove(dest, src, len * sizeof(WChar_t));
 }
 
+static WChar_p Phat_Wcsncpy(WChar_p dest, const WChar_p src, size_t length)
+{
+	size_t len = Phat_Wcslen(src) + 1;
+	if (len > length) len = length;
+	return memmove(dest, src, len * sizeof(WChar_t));
+}
+
 static void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p sector)
 {
 	Phat_SectorCache_p prev = sector->prev;

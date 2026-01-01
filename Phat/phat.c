@@ -1644,7 +1644,7 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 
 	Phat_PathToName(path, longname);
 	if (!Phat_IsValidFilename(longname)) return PhatState_InvalidParameter;
-	while (longname[fnlen]) fnlen++;
+	while (longname[fnlen]) fnlen++; fnlen++; // Including the trailing NUL
 
 	// Check if file/directory already exists
 	Phat_DirInfo_t dir_info_find;
@@ -1652,7 +1652,7 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 	switch (ret)
 	{
 	case PhatState_OK:
-		if (attrib & ATTRIB_DIRECTORY)
+		if (dir_info_find.attributes & ATTRIB_DIRECTORY)
 			return PhatState_DirectoryAlreadyExists;
 		else
 			return PhatState_FileAlreadyExists;
@@ -1768,6 +1768,7 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 		dir_items[1].last_modification_date = Phat_EncodeDate(&phat->cur_date);
 		dir_items[1].first_cluster_low = dir_info.dir_start_cluster & 0xFFFF;
 		dir_items[1].file_size = 0;
+		Phat_SetCachedSectorModified(cached_sector);
 	}
 	if (!only83)
 	{
@@ -1786,9 +1787,10 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 			lfn_entry.type = 0;
 			lfn_entry.first_cluster_low = 0;
 			lfn_entry.checksum = checksum;
-			for (size_t j = 0; j < copy_len; j++)
+			for (size_t j = 0; j < 13; j++)
 			{
-				WChar_t ch = longname[offset + j];
+				WChar_t ch = 0xFFFF;
+				if (j < copy_len) ch = longname[offset + j];
 				if (j < 5)
 					lfn_entry.name1[j] = ch;
 				else if (j < 11)
@@ -1802,7 +1804,8 @@ static PhatState Phat_CreateNewItemInDir(Phat_p phat, WChar_p path, uint8_t attr
 				Phat_CloseDir(&dir_info);
 				return ret;
 			}
-			Phat_MoveToNextDirItem(&dir_info);
+			ret = Phat_MoveToNextDirItem(&dir_info);
+			if (ret != PhatState_OK) return ret;
 		}
 	}
 	memset(&dir_item, 0, sizeof dir_item);
@@ -1832,6 +1835,8 @@ PhatState Phat_OpenFile(Phat_p phat, WChar_p path, PhatBool_t readonly, Phat_Fil
 {
 	Phat_DirInfo_t dir_info;
 	PhatState ret = PhatState_OK;
+
+	Phat_NormalizePath(path);
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;

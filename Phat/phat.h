@@ -158,6 +158,7 @@ typedef enum PhatState_e
 	PhatState_FileAlreadyExists,
 	PhatState_DirectoryAlreadyExists,
 	PhatState_NameTooLong,
+	PhatState_ReadOnly,
 	PhatState_LastState,
 }PhatState;
 

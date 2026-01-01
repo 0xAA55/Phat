@@ -163,6 +163,7 @@ const char *Phat_StateToString(PhatState s)
 		"File is already exists",
 		"Directory is already exists",
 		"The name is too long",
+		"The file is opened in RO mode",
 	};
 	if (s >= PhatState_LastState) return "InvalidStateNumber";
 	else return strlist[s];

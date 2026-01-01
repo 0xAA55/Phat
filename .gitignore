@@ -3,3 +3,4 @@ out/*
 intermediate/*
 *.vcxproj.filters
 *.vcxproj.user
+*.vhd

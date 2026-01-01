@@ -172,7 +172,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BSP_phat.c" />
-    <ClCompile Include="main.c" />
+    <ClCompile Include="test.c" />
     <ClCompile Include="phat.c" />
   </ItemGroup>
   <ItemGroup>

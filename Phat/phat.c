@@ -999,7 +999,7 @@ static uint8_t Phat_LFN_ChkSum(uint8_t *file_name_8_3)
 	return sum;
 }
 
-static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatBool_t extend_FAT_chain)
+static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatBool_t allocate_new_sectors)
 {
 	PhatState ret = PhatState_OK;
 	Phat_p phat = dir_info->phat;
@@ -1018,7 +1018,7 @@ static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatB
 		ret = Phat_GetFATNextCluster(phat, dir_info->dir_current_cluster, &next_cluster);
 		if (ret == PhatState_EndOfFATChain)
 		{
-			if (!extend_FAT_chain) return PhatState_EndOfDirectory;
+			if (!allocate_new_sectors) return PhatState_EndOfDirectory;
 			// Allocate a new cluster
 			ret = Phat_AllocateCluster(phat, &next_cluster);
 			if (ret != PhatState_OK) return ret;

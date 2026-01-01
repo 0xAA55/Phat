@@ -945,6 +945,7 @@ Ended:
 static PhatBool_t Phat_IsValidLFNEntry(Phat_DirItem_p lfn_item)
 {
 	Phat_LFN_Entry_p lfne = (Phat_LFN_Entry_p)lfn_item;
+	if (lfne->order == 0xE5) return 0;
 	if (lfne->attributes != ATTRIB_LFN) return 0;
 	if (lfne->type != 0) return 0;
 	if (lfne->first_cluster_low != 0) return 0;

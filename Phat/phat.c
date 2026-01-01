@@ -900,10 +900,34 @@ static PhatState Phat_UnlinkCluster(Phat_p phat, uint32_t cluster_index)
 	return PhatState_OK;
 }
 
+// `allocated_cluster` could point to a valid cluster that you wish to allocate
 static PhatState Phat_AllocateCluster(Phat_p phat, uint32_t *allocated_cluster)
 {
 	PhatState ret;
-	uint32_t free_cluster;
+	uint32_t free_cluster = *allocated_cluster;
+	if (free_cluster >= 2 && free_cluster <= phat->max_valid_cluster)
+	{
+		uint32_t value;
+		ret = Phat_ReadFAT(phat, free_cluster - 2, &value);
+		if (ret == PhatState_OK && value == 0)
+		{
+			ret = Phat_WriteFAT(phat, free_cluster - 2, phat->end_of_cluster_chain);
+			if (ret != PhatState_OK) return ret;
+			if (phat->has_FSInfo)
+			{
+				if (phat->next_free_cluster == free_cluster)
+				{
+					ret = Phat_SearchForFreeCluster(phat, free_cluster - 2 + 1, &phat->next_free_cluster);
+					if (ret != PhatState_OK)
+					{
+						phat->next_free_cluster = 2;
+					}
+				}
+				if (phat->free_clusters > 0)
+					phat->free_clusters--;
+			}
+		}
+	}
 	ret = Phat_SeekForFreeCluster(phat, &free_cluster);
 	if (ret != PhatState_OK) return ret;
 	ret = Phat_WriteFAT(phat, free_cluster + 2, phat->end_of_cluster_chain);

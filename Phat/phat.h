@@ -130,7 +130,7 @@ typedef struct Phat_FileInfo_s
 	PhatBool_t readonly;
 	PhatBool_t modified;
 	uint8_t sector_buffer[512];
-	LBA_t buffer_LBA;
+	LBA_t sector_buffer_LBA;
 }Phat_FileInfo_t, *Phat_FileInfo_p;
 
 typedef enum PhatState_e

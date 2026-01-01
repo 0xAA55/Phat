@@ -1839,10 +1839,10 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 	file_info->readonly = readonly || ((dir_info->attributes & ATTRIB_READ_ONLY) != 0);
 	file_info->file_pointer = 0;
 	file_info->cur_cluster_index = 0;
-	file_info->buffer_LBA = Phat_ClusterToLBA(phat, file_info->first_cluster) + phat->partition_start_LBA;
+	file_info->sector_buffer_LBA = Phat_ClusterToLBA(phat, file_info->first_cluster) + phat->partition_start_LBA;
 	if (file_info->file_size)
 	{
-		ret = Phat_ReadSectorsWithoutCache(phat, file_info->buffer_LBA, 1, file_info->sector_buffer);
+		ret = Phat_ReadSectorsWithoutCache(phat, file_info->sector_buffer_LBA, 1, file_info->sector_buffer);
 		if (ret != PhatState_OK) return ret;
 	}
 	return PhatState_OK;
@@ -1904,11 +1904,11 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	if (offset_in_sector)
 	{
 		size_t to_copy;
-		if (file_info->buffer_LBA != FPLBA)
+		if (file_info->sector_buffer_LBA != FPLBA)
 		{
 			ret = Phat_ReadSectorsWithoutCache(phat, FPLBA, 1, file_info->sector_buffer);
 			if (ret != PhatState_OK) return ret;
-			file_info->buffer_LBA = FPLBA;
+			file_info->sector_buffer_LBA = FPLBA;
 		}
 		to_copy = 512 - offset_in_sector;
 		if (to_copy > bytes_to_read) to_copy = bytes_to_read;
@@ -1924,7 +1924,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 		sectors_to_read--;
 		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA);
 		if (ret != PhatState_OK) return ret;
-		if (FPLBA == file_info->buffer_LBA)
+		if (FPLBA == file_info->sector_buffer_LBA)
 		{
 			memcpy(buffer, file_info->sector_buffer, 512);
 		}
@@ -1942,15 +1942,15 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	{
 		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA);
 		if (ret != PhatState_OK) return ret;
-		if (file_info->buffer_LBA != FPLBA)
+		if (file_info->sector_buffer_LBA != FPLBA)
 		{
 			ret = Phat_ReadSectorsWithoutCache(phat, FPLBA, 1, file_info->sector_buffer);
 			if (ret != PhatState_OK) return ret;
-			file_info->buffer_LBA = FPLBA;
+			file_info->sector_buffer_LBA = FPLBA;
 		}
 		ret = Phat_ReadSectorsWithoutCache(phat, FPLBA, 1, file_info->sector_buffer);
 		if (ret != PhatState_OK) return ret;
-		file_info->buffer_LBA = FPLBA;
+		file_info->sector_buffer_LBA = FPLBA;
 		memcpy(buffer, file_info->sector_buffer, bytes_to_read);
 		file_info->file_pointer += bytes_to_read;
 		*bytes_read += 512;

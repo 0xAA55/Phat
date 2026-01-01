@@ -1294,6 +1294,25 @@ PhatState Phat_OpenDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 	}
 }
 
+static PhatState Phat_OpenUpperDir(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
+{
+	PhatState ret;
+	WChar_p chr = Phat_ToEndOfString(path);
+	static WChar_t root_dir[1];
+	while (chr > path)
+	{
+		chr--;
+		if (*chr == L'/' || *chr == L'\\')
+		{
+			*chr = L'\0';
+			ret = Phat_OpenDir(phat, path, dir_info);
+			*chr = L'/';
+			return ret;
+		}
+	}
+	return Phat_OpenDir(phat, root_dir, dir_info);
+}
+
 // Open a dir to the path, find the item if can (`PhatState_OK` will be returned), or return `PhatState_EndOfDirectory`
 static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
 {

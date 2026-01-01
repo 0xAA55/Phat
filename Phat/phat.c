@@ -1872,7 +1872,7 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 	return PhatState_OK;
 }
 
-static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info)
+static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info, PhatBool_t allocate_new_sectors)
 {
 	PhatState ret = PhatState_OK;
 	Phat_p phat = file_info->phat;
@@ -1888,7 +1888,18 @@ static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info)
 	{
 		ret = Phat_GetFATNextCluster(phat, file_info->cur_cluster, &next_cluster);
 		if (ret == PhatState_EndOfFATChain)
-			return PhatState_FATError;
+		{
+			if (!allocate_new_sectors) return PhatState_EndOfFile;
+			// Allocate a new cluster
+			next_cluster = file_info->cur_cluster + 1;
+			ret = Phat_AllocateCluster(phat, &next_cluster);
+			if (ret != PhatState_OK) return ret;
+			ret = Phat_WriteFAT(phat, file_info->cur_cluster - 2, next_cluster);
+			if (ret != PhatState_OK) return ret;
+			file_info->cur_cluster = next_cluster;
+			ret = Phat_WipeCluster(phat, next_cluster);
+			if (ret != PhatState_OK) return ret;
+		}
 		else if (ret != PhatState_OK)
 			return ret;
 		file_info->cur_cluster_index++;
@@ -1897,10 +1908,10 @@ static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info)
 	return PhatState_OK;
 }
 
-static PhatState Phat_GetCurFilePointerLBA(Phat_FileInfo_p file_info, LBA_p LBA_out)
+static PhatState Phat_GetCurFilePointerLBA(Phat_FileInfo_p file_info, LBA_p LBA_out, PhatBool_t allocate_new_sectors)
 {
 	uint32_t offset_in_cluster;
-	PhatState ret = Phat_UpdateClusterByFilePointer(file_info);
+	PhatState ret = Phat_UpdateClusterByFilePointer(file_info, allocate_new_sectors);
 	if (ret != PhatState_OK) return ret;
 	offset_in_cluster = (file_info->file_pointer / file_info->phat->bytes_per_sector) % file_info->phat->sectors_per_cluster;
 	*LBA_out = Phat_ClusterToLBA(file_info->phat, file_info->cur_cluster) + offset_in_cluster + file_info->phat->partition_start_LBA;

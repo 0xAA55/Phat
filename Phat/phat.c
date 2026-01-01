@@ -167,6 +167,12 @@ const char *Phat_StateToString(PhatState s)
 	else return strlist[s];
 }
 
+static WChar_p Phat_ToEndOfString(WChar_p string)
+{
+	while (*string) string++;
+	return string;
+}
+
 static void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p sector)
 {
 	Phat_SectorCache_p prev = sector->prev;
@@ -1161,12 +1167,6 @@ void Phat_ToUpperDirectoryPath(WChar_p path)
 			tail_trimming = 0;
 		path[length] = L'\0';
 	}
-}
-
-static WChar_p Phat_ToEndOfString(WChar_p string)
-{
-	while (*string) string++;
-	return string;
 }
 
 void Phat_NormalizePath(WChar_p path)

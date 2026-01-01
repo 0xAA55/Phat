@@ -196,12 +196,11 @@ static PhatState Phat_WriteBackCachedSector(Phat_p phat, Phat_SectorCache_p cach
 // Will write back if dirty
 static PhatState Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
 {
+	PhatState ret;
 	if (Phat_IsCachedSectorValid(cached_sector) && !Phat_IsCachedSectorSync(cached_sector))
 	{
-		if (!Phat_WriteBackCachedSector(phat, cached_sector))
-		{
-			return PhatState_WriteFail;
-		}
+		ret = Phat_WriteBackCachedSector(phat, cached_sector);
+		if (ret != PhatState_OK) return ret;
 		Phat_SetCachedSectorSync(cached_sector);
 	}
 	cached_sector->usage &= ~SECTORCACHE_VALID;
@@ -295,7 +294,7 @@ static PhatState Phat_ReadSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num
 			Phat_SetCachedSectorSync(cached_sector);
 		}
 	}
-	return PhatState_ReadFail;
+	return PhatState_OK;
 }
 
 // Will also update cache if present
@@ -315,7 +314,7 @@ static PhatState Phat_WriteSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t nu
 			Phat_SetCachedSectorSync(cached_sector);
 		}
 	}
-	return PhatState_WriteFail;
+	return PhatState_OK;
 }
 
 static LBA_t Phat_CHS_to_LBA(uint8_t head, uint8_t sector, uint8_t cylinder)

@@ -1994,6 +1994,96 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	return file_info->file_pointer >= file_info->file_size ? PhatState_EndOfFile : PhatState_OK;
 }
 
+PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t bytes_to_write, uint32_t *bytes_written)
+{
+	PhatState ret = PhatState_OK;
+	Phat_p phat = file_info->phat;
+	uint32_t offset_in_sector;
+	LBA_t FPLBA;
+	size_t sectors_to_write;
+	static uint32_t dummy;
+
+	if (!file_info || !buffer || !bytes_to_write) return PhatState_InvalidParameter;
+	if (file_info->readonly) return PhatState_ReadOnly;
+	if (file_info->file_item.attributes & ATTRIB_READ_ONLY) return PhatState_ReadOnly;
+	if (!bytes_written) bytes_written = &dummy;
+	*bytes_written = 0;
+	offset_in_sector = file_info->file_pointer % 512;
+	if (file_info->first_cluster == 0)
+	{
+		// Allocate cluster for empty file
+		uint32_t new_cluster = 0;
+		Phat_DirInfo_p dir_info = &file_info->file_item;
+		Phat_DirItem_t dir_item;
+		ret = Phat_AllocateCluster(phat, &new_cluster);
+		if (ret != PhatState_OK) return ret;
+		ret = Phat_GetDirItem(dir_info, &dir_item);
+		if (ret != PhatState_OK) return ret;
+		dir_item.first_cluster_low = new_cluster & 0xFFFF;
+		dir_item.first_cluster_high = new_cluster >> 16;
+		ret = Phat_PutDirItem(dir_info, &dir_item);
+		if (ret != PhatState_OK) return ret;
+		file_info->first_cluster = new_cluster;
+		dir_info->first_cluster = new_cluster;
+	}
+	ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 1);
+	if (ret != PhatState_OK) return ret;
+	if (offset_in_sector)
+	{
+		size_t to_copy;
+		if (file_info->sector_buffer_LBA != FPLBA)
+		{
+			ret = Phat_ReadSectorsWithoutCache(phat, FPLBA, 1, file_info->sector_buffer);
+			if (ret != PhatState_OK) return ret;
+			file_info->sector_buffer_LBA = FPLBA;
+		}
+		to_copy = 512 - offset_in_sector;
+		if (to_copy > bytes_to_write) to_copy = bytes_to_write;
+		memcpy(&file_info->sector_buffer[offset_in_sector], buffer, to_copy);
+		ret = Phat_WriteSectorsWithoutCache(phat, FPLBA, 1, file_info->sector_buffer);
+		if (ret != PhatState_OK) return ret;
+		file_info->modified = 1;
+		buffer = (uint8_t *)buffer + to_copy;
+		bytes_to_write -= (uint32_t)to_copy;
+		file_info->file_pointer += (uint32_t)to_copy;
+		*bytes_written += (uint32_t)to_copy;
+	}
+	sectors_to_write = bytes_to_write / 512;
+	while (sectors_to_write)
+	{
+		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 1);
+		if (ret != PhatState_OK) return ret;
+		if (FPLBA == file_info->sector_buffer_LBA)
+		{
+			memcpy(file_info->sector_buffer, buffer, 512);
+		}
+		ret = Phat_WriteSectorsWithoutCache(phat, FPLBA, 1, buffer);
+		if (ret != PhatState_OK) return ret;
+		file_info->modified = 1;
+		sectors_to_write--;
+		buffer = (uint8_t *)buffer + 512;
+		file_info->file_pointer += 512;
+		*bytes_written += 512;
+		bytes_to_write -= 512;
+	}
+	if (bytes_to_write)
+	{
+		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 1);
+		if (ret != PhatState_OK) return ret;
+		memset(file_info->sector_buffer, 0, sizeof file_info->sector_buffer);
+		memcpy(file_info->sector_buffer, buffer, bytes_to_write);
+		file_info->sector_buffer_LBA = FPLBA;
+		ret = Phat_WriteSectorsWithoutCache(phat, FPLBA, 1, file_info->sector_buffer);
+		if (ret != PhatState_OK) return ret;
+		file_info->modified = 1;
+		file_info->sector_buffer_LBA = FPLBA;
+		file_info->file_pointer += bytes_to_write;
+		if (file_info->file_pointer > file_info->file_size) file_info->file_size = file_info->file_pointer;
+		*bytes_written += 512;
+	}
+	return PhatState_OK;
+}
+
 PhatState Phat_SeekFile(Phat_FileInfo_p file_info, uint32_t position)
 {
 	file_info->file_pointer = position;
@@ -2031,6 +2121,7 @@ PhatState Phat_CloseFile(Phat_FileInfo_p file_info)
 	{
 		diritem.last_modification_date = Phat_EncodeDate(&phat->cur_date);
 		diritem.last_modification_time = Phat_EncodeTime(&phat->cur_time);
+		diritem.file_size = file_info->file_size;
 	}
 	ret = Phat_PutDirItem(&file_info->file_item, &diritem);
 	if (ret != PhatState_OK) return ret;

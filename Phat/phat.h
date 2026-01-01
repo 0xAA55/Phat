@@ -192,6 +192,7 @@ void Phat_CloseDir(Phat_DirInfo_p dir_info);
 
 PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
 PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_to_read, uint32_t *bytes_read);
+PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t bytes_to_write, uint32_t *bytes_written);
 PhatState Phat_CloseFile(Phat_FileInfo_p file_info);
 
 PhatState Phat_SeekFile(Phat_FileInfo_p file_info, uint32_t position);

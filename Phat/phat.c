@@ -905,7 +905,7 @@ static PhatState Phat_AllocateCluster(Phat_p phat, uint32_t *allocated_cluster)
 	uint32_t free_cluster;
 	ret = Phat_SeekForFreeCluster(phat, &free_cluster);
 	if (ret != PhatState_OK) return ret;
-	ret = Phat_WriteFAT(phat, free_cluster, phat->end_of_cluster_chain);
+	ret = Phat_WriteFAT(phat, free_cluster + 2, phat->end_of_cluster_chain);
 	if (ret != PhatState_OK) return ret;
 	*allocated_cluster = free_cluster;
 	if (phat->has_FSInfo)

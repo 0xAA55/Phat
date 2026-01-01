@@ -1996,17 +1996,9 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 
 PhatState Phat_SeekFile(Phat_FileInfo_p file_info, uint32_t position)
 {
-	PhatState ret;
-	if (position > file_info->file_size)
-	{
-		position = file_info->file_size;
-		file_info->file_pointer = position;
-		ret = Phat_UpdateClusterByFilePointer(file_info);
-		if (ret != PhatState_OK) return ret;
-		return PhatState_EndOfFile;
-	}
 	file_info->file_pointer = position;
-	return Phat_UpdateClusterByFilePointer(file_info);
+	if (Phat_IsEOF(file_info)) return PhatState_EndOfFile;
+	else return PhatState_OK;
 }
 
 void Phat_GetFilePointer(Phat_FileInfo_p file_info, uint32_t *position)

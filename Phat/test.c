@@ -12,17 +12,21 @@ void Error_Handler()
 }
 
 #define V(x) if (x != PhatState_OK) Error_Handler()
+#define V_(x) do {PhatState s = x; if (s != PhatState_OK) fprintf(stderr, #x ": %s\n", Phat_StateToString(s));} while (0)
 
 int main(int argc, char**argv)
 {
-	Phat_DirInfo_t dir_info;
-	WChar_t path[256] = L"";
 	PhatState res = PhatState_OK;
+	Phat_DirInfo_t dir_info = { 0 };
+	Phat_FileInfo_t file_info = { 0 };
+	uint32_t file_size;
+	char *file_buf = NULL;
 
 	V(Phat_Init(&phat));
 	V(Phat_Mount(&phat, 0));
 
-	V(Phat_OpenDir(&phat, path, &dir_info));
+	printf("==== Root directory files ====\n");
+	V(Phat_OpenDir(&phat, L"", &dir_info));
 	for (;;)
 	{
 		res = Phat_NextDirItem(&dir_info);
@@ -34,8 +38,8 @@ int main(int argc, char**argv)
 	}
 	Phat_CloseDir(&dir_info);
 
-	wcscpy(path, L"TestPhat");
-	V(Phat_OpenDir(&phat, path, &dir_info));
+	printf("==== Files in `TestPhat` ====\n");
+	V(Phat_OpenDir(&phat, L"TestPhat", &dir_info));
 	for (;;)
 	{
 		res = Phat_NextDirItem(&dir_info);
@@ -47,10 +51,20 @@ int main(int argc, char**argv)
 	}
 	Phat_CloseDir(&dir_info);
 
-	wcscpy(path, L"TestPhatMkDir");
-	V(Phat_CreateDirectory(&phat, path));
+	V_(Phat_CreateDirectory(&phat, L"TestPhatMkDir"));
+	V_(Phat_RemoveDirectory(&phat, L"TestPhatMkDir"));
 
-	V(Phat_Unmount(&phat));
-	V(Phat_DeInit(&phat));
+	V_(Phat_OpenFile(&phat, L"TestPhat/The Biography of John Wok.txt", 1, &file_info));
+	Phat_GetFileSize(&file_info, &file_size);
+	file_buf = calloc(file_size + 1, 1);
+	if (!file_buf) goto FailExit;
+	V_(Phat_ReadFile(&file_info, file_buf, file_size, NULL));
+	Phat_CloseFile(&file_info);
+	printf("File contents:\n%s\n", file_buf);
+	free(file_buf);
+
+FailExit:
+	V_(Phat_Unmount(&phat));
+	V_(Phat_DeInit(&phat));
 	return 0;
 }

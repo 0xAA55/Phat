@@ -1053,8 +1053,6 @@ static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatB
 			dir_info->dir_current_cluster = next_cluster;
 			ret = Phat_WipeCluster(phat, next_cluster);
 			if (ret != PhatState_OK) return ret;
-			dir_info->dir_current_cluster_index++;
-			return PhatState_OK;
 		}
 		else if (ret != PhatState_OK)
 			return ret;

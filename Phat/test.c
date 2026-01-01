@@ -47,6 +47,9 @@ int main(int argc, char**argv)
 	}
 	Phat_CloseDir(&dir_info);
 
+	wcscpy(path, L"TestPhatMkDir");
+	V(Phat_CreateDirectory(&phat, path));
+
 	V(Phat_Unmount(&phat));
 	V(Phat_DeInit(&phat));
 	return 0;

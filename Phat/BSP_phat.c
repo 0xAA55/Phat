@@ -40,16 +40,31 @@ static void ShowLastError(const char *performing)
 	ShowError(GetLastError(), performing);
 }
 
+static PhatBool_t VHDFileExists()
+{
+	DWORD attrib = GetFileAttributesW(BSP_DeviceFilePath);
+	return (attrib != INVALID_FILE_ATTRIBUTES &&
+		!(attrib & FILE_ATTRIBUTE_DIRECTORY));
+}
+
 static PhatBool_t MountVHD()
 {
 	WCHAR vhd_path[4096];
 	const DWORD buffer_len = sizeof vhd_path / sizeof vhd_path[0];
+
+	if (!VHDFileExists())
+	{
+		fprintf(stderr, "Please create a VHD file (%S), initialize to MBR, create a FAT32 partition, then quick format the partition.\n", BSP_DeviceFilePath);
+		return 0;
+	}
+
 	DWORD length = GetFullPathNameW(BSP_DeviceFilePath, buffer_len, vhd_path, NULL);
 	if (length == 0)
 	{
 		ShowLastError("Get VHD absolute path");
 		return 0;
 	}
+
 
 	VIRTUAL_STORAGE_TYPE storageType = { 0 };
 	storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHD;

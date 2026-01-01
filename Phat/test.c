@@ -8,7 +8,7 @@ Phat_t phat;
 
 void Error_Handler()
 {
-	for (;;);
+	exit(1);
 }
 
 #define V(x) if (x != PhatState_OK) Error_Handler()

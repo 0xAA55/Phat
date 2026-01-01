@@ -38,8 +38,8 @@ int main(int argc, char**argv)
 	}
 	Phat_CloseDir(&dir_info);
 
-	printf("==== Files in `TestPhat` ====\n");
-	V(Phat_OpenDir(&phat, L"TestPhat", &dir_info));
+	printf("==== Files in `TestPhat` directory ====\n");
+	V_(Phat_OpenDir(&phat, L"TestPhat", &dir_info));
 	for (;;)
 	{
 		res = Phat_NextDirItem(&dir_info);

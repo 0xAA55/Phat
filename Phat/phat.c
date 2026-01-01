@@ -1322,9 +1322,8 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 
 	Phat_PathToName(path, longname);
 	if (longname[0] == L'\0') return PhatState_InvalidParameter;
-	Phat_ToUpperDirectoryPath(path);
 
-	ret = Phat_OpenDir(phat, path, dir_info);
+	ret = Phat_OpenUpperDir(phat, path, dir_info);
 	if (ret != PhatState_OK) return ret;
 
 	name_len = (size_t)(Phat_ToEndOfString(longname) - longname);

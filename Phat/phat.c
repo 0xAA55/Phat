@@ -1265,91 +1265,76 @@ void Phat_CloseDir(Phat_DirInfo_p dir_info)
 	memset(dir_info, 0, sizeof * dir_info);
 }
 
-PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
+void Phat_OpenRootDir(Phat_p phat, Phat_DirInfo_p dir_info)
 {
-	LBA_t cur_dir_sector = phat->root_dir_start_LBA;
-	uint32_t cur_dir_cluster = phat->root_dir_cluster;
-	WChar_p ptr;
-	WChar_p name_start;
-	size_t name_len;
-	PhatState ret = PhatState_OK;
-
-	Phat_MovePathToEditablePlace(phat, &path);
-	ptr = path;
-
-	// After normalized, all of the slashes were replaced by '/', and the leading/trailing/duplicated slashes were removed
-	Phat_NormalizePath(path);
 	memset(dir_info, 0, sizeof * dir_info);
 	dir_info->phat = phat;
-	dir_info->first_cluster = cur_dir_cluster;
+	dir_info->dir_start_cluster = phat->root_dir_cluster;
+	dir_info->dir_current_cluster = phat->root_dir_cluster;
+	dir_info->dir_current_cluster_index = 0;
+	dir_info->cur_diritem = 0;
+}
+
+PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname)
+{
+	PhatState ret;
+	WChar_p dirname_ptr;
+	WChar_p end_of_dirname;
+	size_t dirname_len;
+
+	if (!dirname) return PhatState_InvalidParameter;
+
+	dirname_ptr = dirname;
+	dir_info->cur_diritem = 0;
 
 	for (;;)
 	{
-		name_start = ptr;
-		while (*ptr != L'\0' && *ptr != L'/') ptr++;
-		name_len = (size_t)(ptr - name_start);
-		if (name_len > MAX_LFN) return PhatState_InvalidPath;
-
-		if ((*ptr || name_start == path) && name_len) // is middle path
+		end_of_dirname = dirname_ptr;
+		while (*end_of_dirname != 0 && *end_of_dirname != L'/' && *end_of_dirname != L'\\') end_of_dirname++;
+		dirname_len = (size_t)(end_of_dirname - dirname_ptr);
+		if (dirname_len == 0) return PhatState_InvalidParameter;
+		ret = Phat_NextDirItem(dir_info);
+		if (ret == PhatState_OK)
 		{
-			dir_info->dir_start_cluster = cur_dir_cluster;
-			dir_info->dir_current_cluster = cur_dir_cluster;
-			dir_info->dir_current_cluster_index = 0;
-			dir_info->cur_diritem = 0;
-			for (;;)
+			if (dirname_len == dir_info->LFN_length &&
+				!memcmp(dirname_ptr, dir_info->LFN_name, dirname_len * sizeof(WChar_t)))
 			{
-				ret = Phat_NextDirItem(dir_info);
-				if (ret == PhatState_EndOfDirectory)
-				{
-					return PhatState_DirectoryNotFound;
-				}
-				else if (ret != PhatState_OK)
-				{
-					return ret;
-				}
-				if (name_len == dir_info->LFN_length && !memcmp(dir_info->LFN_name, name_start, name_len * sizeof(WChar_t)))
-				{
-					if ((dir_info->attributes & ATTRIB_DIRECTORY) == 0)
-					{
-						return PhatState_NotADirectory;
-					}
-					cur_dir_cluster = dir_info->first_cluster;
-					break;
-				}
+				uint32_t dir_cluster;
+				if ((dir_info->attributes & ATTRIB_DIRECTORY) == 0) return PhatState_NotADirectory;
+				dir_cluster = dir_info->first_cluster;
+				dir_info->dir_start_cluster = dir_cluster;
+				dir_info->dir_current_cluster = dir_cluster;
+				dir_info->dir_current_cluster_index = 0;
+				dir_info->cur_diritem = 0;
+				if (*end_of_dirname == 0) return PhatState_OK;
+				end_of_dirname++;
+				while (*end_of_dirname == L'/' || *end_of_dirname == L'\\')end_of_dirname++;
+				dirname_ptr = end_of_dirname;
 			}
 		}
-		else // is last path
+		else if (ret == PhatState_EndOfDirectory)
 		{
-			cur_dir_cluster = dir_info->first_cluster;
-			dir_info->dir_start_cluster = cur_dir_cluster;
-			dir_info->dir_current_cluster = cur_dir_cluster;
-			dir_info->dir_current_cluster_index = 0;
-			dir_info->cur_diritem = 0;
-			return PhatState_OK;
+			return PhatState_DirectoryNotFound;
+		}
+		else
+		{
+			return ret;
 		}
 	}
 }
 
-static PhatState Phat_OpenUpperDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
+PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 {
-	PhatState ret;
-	WChar_p chr;
-	static WChar_t root_dir[1];
-
-	Phat_MovePathToEditablePlace(phat, &path);
-	chr = Phat_ToEndOfString(path);
-	while (chr > path)
-	{
-		chr--;
-		if (*chr == L'/' || *chr == L'\\')
-		{
-			*chr = L'\0';
-			ret = Phat_OpenDir(phat, path, dir_info);
-			*chr = L'/';
-			return ret;
-		}
-	}
-	return Phat_OpenDir(phat, root_dir, dir_info);
+	WChar_p ptr;
+	if (!path) return PhatState_InvalidParameter;
+	ptr = path;
+	// Skip starting slash
+	while (*ptr == L'/' || *ptr == L'\\') ptr++;
+	Phat_OpenRootDir(phat, dir_info);
+	if (*ptr)
+		return Phat_ChDir(dir_info, ptr);
+	else
+		return PhatState_OK;
 }
 
 // Open a dir to the path, find the item if can (`PhatState_OK` will be returned), or return `PhatState_EndOfDirectory`

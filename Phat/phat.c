@@ -2015,7 +2015,9 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	uint32_t offset_in_sector;
 	LBA_t FPLBA;
 	size_t sectors_to_read;
+	static uint32_t dummy;
 
+	if (!bytes_read) bytes_read = &dummy;
 	*bytes_read = 0;
 	if (file_info->first_cluster == 0) return PhatState_EndOfFile;
 	if (file_info->file_pointer >= file_info->file_size) return PhatState_EndOfFile;

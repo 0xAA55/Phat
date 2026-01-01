@@ -16,10 +16,6 @@
 #define MAX_LFN 255
 #endif
 
-#ifndef MAX_PATH
-#define MAX_PATH 1024
-#endif
-
 #ifndef PHAT_DEFAULT_YEAR
 #define PHAT_DEFAULT_YEAR 2026
 #endif
@@ -76,7 +72,6 @@ typedef struct Phat_s
 	Phat_SectorCache_t cache[PHAT_CACHED_SECTORS];
 	Phat_SectorCache_p cache_LRU_head;
 	Phat_SectorCache_p cache_LRU_tail;
-	WChar_t path_buffer[MAX_PATH];
 	WChar_t filename_buffer[MAX_LFN + 1];
 	Phat_Date_t cur_date;
 	Phat_Time_t cur_time;

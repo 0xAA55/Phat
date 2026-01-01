@@ -315,12 +315,6 @@ void Phat_PathToNameInPlace(WChar_p path)
 	Phat_PathToName(path, path);
 }
 
-static void Phat_MovePathToEditablePlace(Phat_p phat, const WChar_p *path)
-{
-	if (*path < phat->path_buffer || *path >= &phat->path_buffer[MAX_PATH])
-		*(WChar_p *)path = Phat_Wcsncpy(phat->path_buffer, *path, MAX_PATH);
-}
-
 static void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p sector)
 {
 	Phat_SectorCache_p prev = sector->prev;

@@ -26,14 +26,28 @@ static HANDLE hDevice = INVALID_HANDLE_VALUE;
 
 static void ShowError(DWORD error_code, const char *performing)
 {
-	LPWSTR message_buffer = NULL;
+	LPWSTR w_message_buffer = NULL;
+	LPSTR message_buffer = NULL;
 
 	//Ask Win32 to give us the string version of that message ID.
 	//The parameters we pass in, tell Win32 to create the buffer that holds the message for us (because we don't yet know how long the message string will be).
-	size_t size = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&message_buffer, 0, NULL);
-	fprintf(stderr, "%s: %S\n", performing, message_buffer);
-	LocalFree(message_buffer);
+	size_t num_chars = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&w_message_buffer, 0, NULL);
+	message_buffer = calloc(num_chars, 6);
+	if (w_message_buffer)
+	{
+		if (message_buffer)
+		{
+			WideCharToMultiByte(CP_UTF8, 0, w_message_buffer, num_chars, message_buffer, num_chars * 6, NULL, NULL);
+			fprintf(stderr, "%s: %s\n", performing, message_buffer);
+		}
+		else
+		{
+			fprintf(stderr, "%s: %S\n", performing, w_message_buffer);
+		}
+	}
+	LocalFree(w_message_buffer);
+	free(message_buffer);
 }
 
 static void ShowLastError(const char *performing)

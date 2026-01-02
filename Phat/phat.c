@@ -2276,9 +2276,10 @@ PhatState Phat_CloseFile(Phat_FileInfo_p file_info)
 	Phat_DirItem_t diritem;
 	PhatState ret;
 	Phat_p phat = file_info->phat;
+	Phat_DirInfo_p dir_info = &file_info->file_item;
 
 	if (!file_info) return PhatState_InvalidParameter;
-	ret = Phat_GetDirItem(&file_info->file_item, &diritem);
+	ret = Phat_GetDirItem(dir_info, &diritem);
 	if (ret != PhatState_OK) return ret;
 
 	diritem.last_access_date = Phat_EncodeDate(&phat->cur_date);
@@ -2288,9 +2289,10 @@ PhatState Phat_CloseFile(Phat_FileInfo_p file_info)
 		diritem.last_modification_time = Phat_EncodeTime(&phat->cur_time);
 		diritem.file_size = file_info->file_size;
 	}
-	ret = Phat_PutDirItem(&file_info->file_item, &diritem);
+	ret = Phat_PutDirItem(dir_info, &diritem);
 	if (ret != PhatState_OK) return ret;
 
+	Phat_CloseDir(dir_info);
 	memset(file_info, 0, sizeof * file_info);
 	return PhatState_OK;
 }

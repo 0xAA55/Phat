@@ -1149,7 +1149,19 @@ static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatB
 	Phat_p phat = dir_info->phat;
 	uint32_t cluster_index;
 	uint32_t next_cluster;
-	if (dir_info->dir_start_cluster < 2) return PhatState_InvalidParameter;
+
+	if (phat->FAT_bits != 32)
+	{
+		if (dir_info->dir_start_cluster == 0)
+		{
+			// For root dir, no cluster need to be updated
+			return PhatState_OK;
+		}
+	}
+	else
+	{
+		if (dir_info->dir_start_cluster < 2) return PhatState_InvalidParameter;
+	}
 	cluster_index = dir_info->cur_diritem / phat->num_diritems_in_a_cluster;
 	if (dir_info->dir_current_cluster_index > cluster_index)
 	{
@@ -1192,13 +1204,24 @@ static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem_p dir_ite
 	Phat_p phat = dir_info->phat;
 	uint32_t cur_diritem_in_cur_cluster = dir_info->cur_diritem % phat->num_diritems_in_a_cluster;
 
-	if (dir_info->dir_start_cluster == 0) return PhatState_EndOfDirectory;
-	ret = Phat_UpdateClusterByDirItemIndex(dir_info, 0);
-	if (ret != PhatState_OK) return ret;
 	if (phat->FAT_bits == 32)
+	{
+		if (dir_info->dir_start_cluster == 0) return PhatState_EndOfDirectory;
+		ret = Phat_UpdateClusterByDirItemIndex(dir_info, 0);
+		if (ret != PhatState_OK) return ret;
 		dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+	}
 	else // Root directory in FAT12/16
-		dir_sector_LBA = phat->root_dir_start_LBA + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+	{
+		if (dir_info->dir_start_cluster == 0)
+			dir_sector_LBA = phat->root_dir_start_LBA + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+		else
+		{
+			ret = Phat_UpdateClusterByDirItemIndex(dir_info, 0);
+			if (ret != PhatState_OK) return ret;
+			dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+		}
+	}
 	item_index_in_sector = cur_diritem_in_cur_cluster % phat->num_diritems_in_a_sector;
 	dir_sector_LBA += phat->partition_start_LBA;
 	ret = Phat_ReadSectorThroughCache(phat, dir_sector_LBA, &cached_sector);
@@ -1218,13 +1241,24 @@ static PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_DirItem_p d
 	Phat_p phat = dir_info->phat;
 	uint32_t cur_diritem_in_cur_cluster = dir_info->cur_diritem % phat->num_diritems_in_a_cluster;
 
-	if (dir_info->dir_start_cluster == 0) return PhatState_InternalError;
-	ret = Phat_UpdateClusterByDirItemIndex(dir_info, 1);
-	if (ret != PhatState_OK) return ret;
 	if (phat->FAT_bits == 32)
+	{
+		if (dir_info->dir_start_cluster == 0) return PhatState_EndOfDirectory;
+		ret = Phat_UpdateClusterByDirItemIndex(dir_info, 0);
+		if (ret != PhatState_OK) return ret;
 		dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+	}
 	else // Root directory in FAT12/16
-		dir_sector_LBA = phat->root_dir_start_LBA + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+	{
+		if (dir_info->dir_start_cluster == 0)
+			dir_sector_LBA = phat->root_dir_start_LBA + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+		else
+		{
+			ret = Phat_UpdateClusterByDirItemIndex(dir_info, 0);
+			if (ret != PhatState_OK) return ret;
+			dir_sector_LBA = Phat_ClusterToLBA(phat, dir_info->dir_current_cluster) + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+		}
+	}
 	item_index_in_sector = cur_diritem_in_cur_cluster % phat->num_diritems_in_a_sector;
 	dir_sector_LBA += phat->partition_start_LBA;
 	ret = Phat_ReadSectorThroughCache(phat, dir_sector_LBA, &cached_sector);
@@ -1482,7 +1516,7 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 
 	if (!path) return PhatState_InvalidParameter;
 
-	if (dir_info->dir_current_cluster < 2) Phat_OpenRootDir(phat, dir_info);
+	if (phat->FAT_bits == 32 && dir_info->dir_current_cluster < 2) Phat_OpenRootDir(phat, dir_info);
 
 	dirname_ptr = path;
 	dir_info->cur_diritem = 0;

@@ -63,6 +63,12 @@ int main(int argc, char**argv)
 	printf("File contents:\n%s\n", file_buf);
 	free(file_buf);
 
+	V_(Phat_CreateDirectory(&phat, L"TestPhatWrite"));
+	V_(Phat_OpenFile(&phat, L"TestPhatWrite/TestWrite.txt", 0, &file_info));
+	static const char data_to_write[] = "This is the data we want to write to the file.\n";
+	V_(Phat_WriteFile(&file_info, data_to_write, sizeof data_to_write, NULL));
+	V_(Phat_CloseFile(&file_info));
+
 FailExit:
 	V_(Phat_Unmount(&phat));
 	V_(Phat_DeInit(&phat));

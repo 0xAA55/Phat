@@ -2418,7 +2418,7 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 	Phat_DirInfo_t dir_info;
 	size_t name_len;
 
-	ret = Phat_FindFile(phat, path, &dir_info);
+	ret = Phat_FindItem(phat, path, &dir_info, NULL);
 	if (ret != PhatState_OK) return ret;
 
 	Phat_PathToName(path, phat->filename_buffer);

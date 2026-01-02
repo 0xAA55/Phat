@@ -189,8 +189,9 @@ const char *Phat_StateToString(PhatState s)
 		"Directory is not empty",
 		"File is already exists",
 		"Directory is already exists",
-		"The name is too long",
 		"The file is opened in RO mode",
+		"The name is too long",
+		"The name contains invalid characters",
 	};
 	if (s >= PhatState_LastState) return "InvalidStateNumber";
 	else return strlist[s];

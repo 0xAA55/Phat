@@ -57,7 +57,8 @@ typedef struct Phat_DBR_s
 	uint32_t volume_ID;
 	uint8_t volume_label[11];
 	uint8_t file_system_type[8];
-	uint8_t boot_code[420];
+	uint8_t boot_code[419];
+	uint8_t dirty;
 	uint16_t boot_sector_signature;
 }Phat_DBR_t, *Phat_DBR_p;
 
@@ -614,6 +615,44 @@ static PhatState Phat_SeekForFreeCluster(Phat_p phat, uint32_t *cluster_out)
 	return Phat_SearchForFreeCluster(phat, phat->next_free_cluster, cluster_out);
 }
 
+static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t blush_immediately)
+{
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+
+	if (phat->FAT_bits == 32)
+	{
+		uint32_t *FAT_table;
+		// Modify FAT[1] to indicate 'dirty'
+		for (size_t i = 0; i < phat->num_FATs; i++)
+		{
+			ret = Phat_ReadSectorThroughCache(phat, phat->FAT1_start_LBA + i * phat->FAT_size_in_sectors, &cached_sector);
+			if (ret != PhatState_OK) return ret;
+			FAT_table = (uint32_t *)cached_sector->data;
+			if (is_dirty)
+				FAT_table[1] &= 0x7FFFFFFF;
+			else
+				FAT_table[1] |= 0xFFFFFFFF;
+			Phat_SetCachedSectorModified(cached_sector);
+		}
+	}
+	else
+	{
+		Phat_DBR_p dbr;
+		ret = Phat_ReadSectorThroughCache(phat, phat->partition_start_LBA, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		dbr = (Phat_DBR_p)cached_sector->data;
+		dbr->dirty = is_dirty ? 1 : 0;
+		Phat_SetCachedSectorModified(cached_sector);
+	}
+	if (blush_immediately)
+	{
+		ret = Phat_FlushCache(phat);
+		if (ret != PhatState_OK) return ret;
+	}
+	return PhatState_OK;
+}
+
 // Open a partition, load all of the informations from the DBR in order to manipulate files/directories
 PhatState Phat_Mount(Phat_p phat, int partition_index)
 {
@@ -695,6 +734,9 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 		if (ret != PhatState_OK) phat->free_clusters = 0;
 	}
 
+	ret = Phat_MarkDirty(phat, 1, 1);
+	if (ret != PhatState_OK) return ret;
+
 	return PhatState_OK;
 }
 
@@ -732,12 +774,14 @@ PhatState Phat_FlushCache(Phat_p phat)
 
 PhatState Phat_Unmount(Phat_p phat)
 {
-	return Phat_FlushCache(phat);
+	PhatState ret = Phat_MarkDirty(phat, 0, 1);
+	if (ret != PhatState_OK) return ret;
+	return PhatState_OK;
 }
 
 PhatState Phat_DeInit(Phat_p phat)
 {
-	PhatState ret = Phat_FlushCache(phat);
+	PhatState ret = Phat_Unmount(phat);
 	if (ret != PhatState_OK) return ret;
 	if (!Phat_CloseDevice(&phat->driver)) return PhatState_DriverError;
 	Phat_DeInitDriver(&phat->driver);
@@ -2016,6 +2060,7 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 		ret = Phat_PutDirItem(dir_info, &dir_item);
 		if (ret != PhatState_OK) return ret;
 		file_info->first_cluster = new_cluster;
+		file_info->cur_cluster = new_cluster;
 		dir_info->first_cluster = new_cluster;
 	}
 	if (offset_in_sector)

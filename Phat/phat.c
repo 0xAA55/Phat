@@ -1452,7 +1452,7 @@ PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname)
 {
 	PhatState ret;
 	WChar_p dirname_ptr;
-	WChar_p end_of_dirname;
+	WChar_p end_of_dirname = NULL;
 	size_t dirname_len;
 
 	if (!dirname) return PhatState_InvalidParameter;
@@ -1462,10 +1462,13 @@ PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname)
 
 	for (;;)
 	{
-		end_of_dirname = dirname_ptr;
-		while (*end_of_dirname != 0 && *end_of_dirname != L'/' && *end_of_dirname != L'\\') end_of_dirname++;
-		dirname_len = (size_t)(end_of_dirname - dirname_ptr);
-		if (dirname_len == 0) return PhatState_InvalidParameter;
+		if (end_of_dirname == NULL)
+		{
+			end_of_dirname = dirname_ptr;
+			while (*end_of_dirname != 0 && *end_of_dirname != L'/' && *end_of_dirname != L'\\') end_of_dirname++;
+			dirname_len = (size_t)(end_of_dirname - dirname_ptr);
+			if (dirname_len == 0) return PhatState_InvalidParameter;
+		}
 		ret = Phat_NextDirItem(dir_info);
 		if (ret == PhatState_OK)
 		{
@@ -1483,6 +1486,7 @@ PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname)
 				end_of_dirname++;
 				while (*end_of_dirname == L'/' || *end_of_dirname == L'\\')end_of_dirname++;
 				dirname_ptr = end_of_dirname;
+				end_of_dirname = NULL;
 			}
 		}
 		else if (ret == PhatState_EndOfDirectory)
@@ -1515,7 +1519,7 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 {
 	PhatState ret;
 	WChar_p dirname_ptr;
-	WChar_p end_of_dirname;
+	WChar_p end_of_dirname = NULL;
 	size_t dirname_len;
 
 	if (!path) return PhatState_InvalidParameter;
@@ -1527,11 +1531,14 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 
 	for (;;)
 	{
-		if (next_path) *next_path = dirname_ptr;
-		end_of_dirname = dirname_ptr;
-		while (*end_of_dirname != 0 && *end_of_dirname != L'/' && *end_of_dirname != L'\\') end_of_dirname++;
-		dirname_len = (size_t)(end_of_dirname - dirname_ptr);
-		if (dirname_len == 0) return PhatState_InvalidParameter;
+		if (end_of_dirname == NULL)
+		{
+			if (next_path) *next_path = dirname_ptr;
+			end_of_dirname = dirname_ptr;
+			while (*end_of_dirname != 0 && *end_of_dirname != L'/' && *end_of_dirname != L'\\') end_of_dirname++;
+			dirname_len = (size_t)(end_of_dirname - dirname_ptr);
+			if (dirname_len == 0) return PhatState_InvalidParameter;
+		}
 		ret = Phat_NextDirItem(dir_info);
 		if (ret == PhatState_OK)
 		{
@@ -1549,6 +1556,7 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 				dir_info->dir_current_cluster = dir_cluster;
 				dir_info->dir_current_cluster_index = 0;
 				dir_info->cur_diritem = 0;
+				end_of_dirname = NULL;
 			}
 		}
 		else if (ret == PhatState_EndOfDirectory)

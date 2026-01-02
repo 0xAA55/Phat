@@ -1217,7 +1217,7 @@ static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem_p dir_ite
 	else // Root directory in FAT12/16
 	{
 		if (dir_info->dir_start_cluster == 0)
-			dir_sector_LBA = phat->root_dir_start_LBA + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+			dir_sector_LBA = phat->root_dir_start_LBA + dir_info->cur_diritem / phat->num_diritems_in_a_sector;
 		else
 		{
 			ret = Phat_UpdateClusterByDirItemIndex(dir_info, 0);
@@ -1254,7 +1254,7 @@ static PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_DirItem_p d
 	else // Root directory in FAT12/16
 	{
 		if (dir_info->dir_start_cluster == 0)
-			dir_sector_LBA = phat->root_dir_start_LBA + cur_diritem_in_cur_cluster / phat->num_diritems_in_a_sector;
+			dir_sector_LBA = phat->root_dir_start_LBA + dir_info->cur_diritem / phat->num_diritems_in_a_sector;
 		else
 		{
 			ret = Phat_UpdateClusterByDirItemIndex(dir_info, 0);

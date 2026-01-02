@@ -615,7 +615,7 @@ static PhatState Phat_SeekForFreeCluster(Phat_p phat, uint32_t *cluster_out)
 	return Phat_SearchForFreeCluster(phat, phat->next_free_cluster, cluster_out);
 }
 
-static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t blush_immediately)
+static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flush_immediately)
 {
 	PhatState ret;
 	Phat_SectorCache_p cached_sector;
@@ -623,8 +623,7 @@ static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t blu
 	if (phat->FAT_bits == 32)
 	{
 		uint32_t *FAT_table;
-		// Modify FAT[1] to indicate 'dirty'
-		for (size_t i = 0; i < phat->num_FATs; i++)
+		for (LBA_t i = 0; i < phat->num_FATs; i++)
 		{
 			ret = Phat_ReadSectorThroughCache(phat, phat->FAT1_start_LBA + i * phat->FAT_size_in_sectors, &cached_sector);
 			if (ret != PhatState_OK) return ret;
@@ -645,10 +644,34 @@ static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t blu
 		dbr->dirty = is_dirty ? 1 : 0;
 		Phat_SetCachedSectorModified(cached_sector);
 	}
-	if (blush_immediately)
+	if (flush_immediately)
 	{
 		ret = Phat_FlushCache(phat);
 		if (ret != PhatState_OK) return ret;
+	}
+	return PhatState_OK;
+}
+
+static PhatState Phat_CheckIsDirty(Phat_p phat, PhatBool_t *is_dirty)
+{
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+
+	if (phat->FAT_bits == 32)
+	{
+		uint32_t *FAT_table;
+		ret = Phat_ReadSectorThroughCache(phat, phat->FAT1_start_LBA, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		FAT_table = (uint32_t *)cached_sector->data;
+		*is_dirty = (FAT_table[1] & 0x80000000) == 0;
+	}
+	else
+	{
+		Phat_DBR_p dbr;
+		ret = Phat_ReadSectorThroughCache(phat, phat->partition_start_LBA, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		dbr = (Phat_DBR_p)cached_sector->data;
+		*is_dirty = dbr->dirty;
 	}
 	return PhatState_OK;
 }
@@ -734,6 +757,9 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 		if (ret != PhatState_OK) phat->free_clusters = 0;
 	}
 
+	ret = Phat_CheckIsDirty(phat, &phat->is_dirty);
+	if (ret != PhatState_OK) return ret;
+
 	ret = Phat_MarkDirty(phat, 1, 1);
 	if (ret != PhatState_OK) return ret;
 
@@ -774,7 +800,7 @@ PhatState Phat_FlushCache(Phat_p phat)
 
 PhatState Phat_Unmount(Phat_p phat)
 {
-	PhatState ret = Phat_MarkDirty(phat, 0, 1);
+	PhatState ret = Phat_MarkDirty(phat, phat->is_dirty, 1);
 	if (ret != PhatState_OK) return ret;
 	return PhatState_OK;
 }

@@ -42,6 +42,27 @@ int main(int argc, char**argv)
 	}
 	Phat_CloseDir(&dir_info);
 
+	V_(Phat_CreateDirectory(&phat, L"TestPhatRmDir"));
+
+	printf("==== Root directory files after created directory \"TestPhatRmDir\" ====\n");
+	V(Phat_OpenDir(&phat, L"", &dir_info));
+	for (;;)
+	{
+		res = Phat_NextDirItem(&dir_info);
+		if (res != PhatState_OK) break;
+		if (dir_info.attributes & ATTRIB_DIRECTORY)
+			printf("Dir:  %S\n", dir_info.LFN_name);
+		else
+			printf("File: %S\n", dir_info.LFN_name);
+	}
+	Phat_CloseDir(&dir_info);
+	V_(Phat_RemoveDirectory(&phat, L"TestPhatRmDir"));
+
+	V_(Phat_CreateDirectory(&phat, L"TestPhat/Deeper"));
+	V_(Phat_OpenFile(&phat, L"TestPhat/Deeper/The Biography of John Wok.txt", 0, &file_info));
+	V_(Phat_WriteFile(&file_info, data_to_write, sizeof data_to_write, NULL));
+	V_(Phat_CloseFile(&file_info));
+
 	printf("==== Files in `TestPhat` directory ====\n");
 	V_(Phat_OpenDir(&phat, L"TestPhat", &dir_info));
 	for (;;)
@@ -54,14 +75,6 @@ int main(int argc, char**argv)
 			printf("File: %S\n", dir_info.LFN_name);
 	}
 	Phat_CloseDir(&dir_info);
-
-	V_(Phat_CreateDirectory(&phat, L"TestPhatRmDir"));
-	V_(Phat_RemoveDirectory(&phat, L"TestPhatRmDir"));
-
-	V_(Phat_CreateDirectory(&phat, L"TestPhat/Deeper"));
-	V_(Phat_OpenFile(&phat, L"TestPhat/Deeper/The Biography of John Wok.txt", 0, &file_info));
-	V_(Phat_WriteFile(&file_info, data_to_write, sizeof data_to_write, NULL));
-	V_(Phat_CloseFile(&file_info));
 
 	V_(Phat_OpenFile(&phat, L"TestPhat/Deeper/The Biography of John Wok.txt", 1, &file_info));
 	Phat_GetFileSize(&file_info, &file_size);

@@ -2385,6 +2385,8 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 	PhatState ret;
 	size_t name_len;
 	uint32_t parent_dir_start_cluster = 0;
+	uint32_t first_entry = 0;
+	uint32_t last_entry = 0;
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
@@ -2402,7 +2404,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 			return PhatState_DirectoryNotEmpty;
 		}
 		if (ret == PhatState_EndOfDirectory) break;
-		else return ret;
+		else goto FailExit;
 	}
 	Phat_PathToName(path, phat->filename_buffer);
 	name_len = Phat_Wcslen(phat->filename_buffer);
@@ -2415,41 +2417,27 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 	dir_info.dir_current_cluster_index = 0;
 	dir_info.cur_diritem = 0;
 
-	for (;;)
+	ret = Phat_FindItem(phat, phat->filename_buffer, &dir_info, NULL);
+	if (ret != PhatState_OK) goto FailExit;
+	last_entry = dir_info.cur_diritem;
+	ret = Phat_FindFirstLFNEntry(&dir_info);
+	if (ret != PhatState_OK) goto FailExit;
+	first_entry = dir_info.cur_diritem;
+
+	for (uint32_t i = first_entry; i <= last_entry; i++)
 	{
-		uint32_t last_dir_item;
-		uint32_t cur_dir_item;
 		Phat_DirItem_t dir_item;
-		last_dir_item = dir_info.cur_diritem;
-		ret = Phat_NextDirItem(&dir_info);
-		cur_dir_item = dir_info.cur_diritem;
-		if (ret == PhatState_EndOfDirectory)
-		{
-			Phat_CloseDir(&dir_info);
-			return PhatState_InternalError;
-		}
-		else if (ret != PhatState_OK)
-		{
-			Phat_CloseDir(&dir_info);
-			return ret;
-		}
-		if (name_len == dir_info.LFN_length && !memcmp(phat->filename_buffer, dir_info.LFN_name, name_len * sizeof(WChar_t)))
-		{
-			dir_info.dir_current_cluster_index = 0;
-			dir_info.dir_current_cluster = dir_info.dir_start_cluster;
-			for (uint32_t i = last_dir_item; i < cur_dir_item; i++)
-			{
-				dir_info.cur_diritem = i;
-				ret = Phat_GetDirItem(&dir_info, &dir_item);
-				if (ret != PhatState_OK) return ret;
-				dir_item.file_name_8_3[0] = 0xE5;
-				ret = Phat_PutDirItem(&dir_info, &dir_item);
-				if (ret != PhatState_OK) return ret;
-			}
-			Phat_CloseDir(&dir_info);
-			return PhatState_OK;
-		}
+		dir_info.cur_diritem = i;
+		ret = Phat_GetDirItem(&dir_info, &dir_item);
+		if (ret != PhatState_OK) return ret;
+		dir_item.file_name_8_3[0] = 0xE5;
+		ret = Phat_PutDirItem(&dir_info, &dir_item);
+		if (ret != PhatState_OK) return ret;
 	}
+
+FailExit:
+	Phat_CloseDir(&dir_info);
+	return ret;
 }
 
 PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
@@ -2457,45 +2445,35 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 	PhatState ret;
 	Phat_DirInfo_t dir_info;
 	size_t name_len;
+	uint32_t first_entry = 0;
+	uint32_t last_entry = 0;
 
 	ret = Phat_FindItem(phat, path, &dir_info, NULL);
 	if (ret != PhatState_OK) return ret;
 
 	Phat_PathToName(path, phat->filename_buffer);
 	name_len = Phat_Wcslen(phat->filename_buffer);
-	for (;;)
+
+	ret = Phat_FindItem(phat, phat->filename_buffer, &dir_info, NULL);
+	if (ret != PhatState_OK) goto FailExit;
+	last_entry = dir_info.cur_diritem;
+	ret = Phat_FindFirstLFNEntry(&dir_info);
+	if (ret != PhatState_OK) goto FailExit;
+	first_entry = dir_info.cur_diritem;
+
+	for (uint32_t i = first_entry; i <= last_entry; i++)
 	{
-		uint32_t last_dir_item;
-		uint32_t cur_dir_item;
 		Phat_DirItem_t dir_item;
-		last_dir_item = dir_info.cur_diritem;
-		ret = Phat_NextDirItem(&dir_info);
-		cur_dir_item = dir_info.cur_diritem;
-		if (ret == PhatState_EndOfDirectory)
-		{
-			Phat_CloseDir(&dir_info);
-			return PhatState_InternalError;
-		}
-		else if (ret != PhatState_OK)
-		{
-			Phat_CloseDir(&dir_info);
-			return ret;
-		}
-		if (name_len == dir_info.LFN_length && !memcmp(phat->filename_buffer, dir_info.LFN_name, name_len * sizeof(WChar_t)))
-		{
-			dir_info.dir_current_cluster_index = 0;
-			dir_info.dir_current_cluster = dir_info.dir_start_cluster;
-			for (uint32_t i = last_dir_item; i <= cur_dir_item; i++)
-			{
-				dir_info.cur_diritem = i;
-				ret = Phat_GetDirItem(&dir_info, &dir_item);
-				if (ret != PhatState_OK) return ret;
-				dir_item.file_name_8_3[0] = 0xE5;
-				ret = Phat_PutDirItem(&dir_info, &dir_item);
-				if (ret != PhatState_OK) return ret;
-			}
-			return PhatState_OK;
-		}
+		dir_info.cur_diritem = i;
+		ret = Phat_GetDirItem(&dir_info, &dir_item);
+		if (ret != PhatState_OK) return ret;
+		dir_item.file_name_8_3[0] = 0xE5;
+		ret = Phat_PutDirItem(&dir_info, &dir_item);
+		if (ret != PhatState_OK) return ret;
 	}
+
+FailExit:
+	Phat_CloseDir(&dir_info);
+	return ret;
 }
 

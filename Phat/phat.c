@@ -2190,7 +2190,6 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 		if (ret != PhatState_OK) return ret;
 		file_info->first_cluster = new_cluster;
 		file_info->cur_cluster = new_cluster;
-		dir_info->first_cluster = new_cluster;
 	}
 	if (offset_in_sector)
 	{

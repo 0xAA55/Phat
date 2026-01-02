@@ -753,6 +753,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 		phat->FAT1_start_LBA = dbr->reserved_sector_count;
 		phat->root_dir_cluster = 0;
 		phat->root_dir_start_LBA = end_of_FAT_LBA;
+		phat->root_entry_count = dbr->root_entry_count;
 		phat->data_start_LBA = phat->root_dir_start_LBA + (((LBA_t)dbr->root_entry_count * 32) + (dbr->bytes_per_sector - 1)) / dbr->bytes_per_sector;
 		phat->bytes_per_sector = dbr->bytes_per_sector;
 		phat->sectors_per_cluster = dbr->sectors_per_cluster;
@@ -776,6 +777,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 		phat->FAT1_start_LBA = dbr_32->reserved_sector_count;
 		phat->root_dir_cluster = dbr_32->root_dir_cluster;
 		phat->root_dir_start_LBA = end_of_FAT_LBA + (LBA_t)(phat->root_dir_cluster - 2) * dbr_32->sectors_per_cluster;
+		phat->root_entry_count = dbr_32->root_entry_count;
 		phat->data_start_LBA = phat->root_dir_start_LBA;
 		phat->bytes_per_sector = dbr_32->bytes_per_sector;
 		phat->sectors_per_cluster = dbr_32->sectors_per_cluster;
@@ -1155,6 +1157,7 @@ static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatB
 		if (dir_info->dir_start_cluster == 0)
 		{
 			// For root dir, no cluster need to be updated
+			if (dir_info->cur_diritem >= phat->root_entry_count) return PhatState_EndOfDirectory;
 			return PhatState_OK;
 		}
 	}

@@ -1971,20 +1971,56 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 {
 	Phat_DirInfo_p dir_info;
 	PhatState ret;
+	WChar_p p;
+	WChar_p ch;
+	size_t dirname_len;
 
 	if (!phat || !path || !file_info) return PhatState_InvalidParameter;
 	file_info->phat = phat;
 	dir_info = &file_info->file_item;
+	Phat_OpenRootDir(phat, dir_info);
 
-	ret = Phat_FindFile(phat, path, dir_info);
-	if (ret == PhatState_FileNotFound)
+	ret = Phat_FindItem(phat, path, dir_info, &p);
+	if (ret == PhatState_EndOfDirectory)
 	{
-		if (readonly) return ret;
-		Phat_PathToName(path, phat->filename_buffer);
-		ret = Phat_CreateNewItemInDir(dir_info, phat->filename_buffer, 0);
-		if (ret != PhatState_OK) return ret;
+		if (readonly) return PhatState_FileNotFound;
+		for (;;)
+		{
+			ch = p;
+			while (*ch && *ch != L'/' && *ch != L'\\') ch++;
+			dirname_len = (size_t)(ch - p);
+			if (dirname_len > MAX_LFN) return PhatState_NameTooLong;
+			if (*ch)
+			{
+				Phat_CloseDir(dir_info);
+				return PhatState_DirectoryNotFound;
+			}
+			else
+			{
+				memcpy(phat->filename_buffer, p, dirname_len * sizeof(WChar_t));
+				phat->filename_buffer[dirname_len] = 0;
+				ret = Phat_CreateNewItemInDir(dir_info, phat->filename_buffer, 0);
+				if (ret != PhatState_OK) return ret;
+				ret = Phat_FindItem(phat, phat->filename_buffer, dir_info, NULL);
+				if (ret != PhatState_OK) return ret;
+				break;
+			}
+		}
 	}
-	else if (ret != PhatState_OK) return ret;
+	else if (ret == PhatState_OK)
+	{
+		if (dir_info->attributes & ATTRIB_DIRECTORY)
+		{
+			Phat_CloseDir(dir_info);
+			return PhatState_IsADirectory;
+		}
+	}
+	else
+	{
+		// Error
+		Phat_CloseDir(dir_info);
+		return ret;
+	}
 	file_info->modified = 0;
 	file_info->first_cluster = dir_info->first_cluster;
 	file_info->cur_cluster = dir_info->first_cluster;

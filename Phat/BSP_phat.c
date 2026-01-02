@@ -17,6 +17,7 @@ __weak PhatBool_t BSP_WriteSector(void *buffer, LBA_t LBA, size_t num_blocks, vo
 #include <assert.h>
 #include <Windows.h>
 #include <virtdisk.h>
+#pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "VirtDisk.lib")
 
 static const WCHAR* BSP_DeviceFilePath = L"test.vhd";
@@ -47,6 +48,50 @@ static PhatBool_t VHDFileExists()
 		!(attrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
+static PhatBool_t GetPrivileged()
+{
+	HANDLE hToken = INVALID_HANDLE_VALUE;
+	uint32_t privilege_buffer[sizeof(TOKEN_PRIVILEGES) + sizeof(LUID_AND_ATTRIBUTES) * 2] = { 0 };
+	TOKEN_PRIVILEGES *tp = (TOKEN_PRIVILEGES *)privilege_buffer;
+	tp->PrivilegeCount = 3;
+
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+	{
+		ShowLastError("Querying privileges");
+		goto ErrRet;
+	}
+
+	if (!LookupPrivilegeValue(NULL, SE_MANAGE_VOLUME_NAME, &tp->Privileges[0].Luid))
+	{
+		ShowLastError("Looking up manage volume privilege LUID");
+		goto ErrRet;
+	}
+
+	if (!LookupPrivilegeValue(NULL, SE_BACKUP_NAME, &tp->Privileges[1].Luid))
+	{
+		ShowLastError("Looking up backup privilege LUID");
+		goto ErrRet;
+	}
+
+	if (!LookupPrivilegeValue(NULL, SE_RESTORE_NAME, &tp->Privileges[2].Luid))
+	{
+		ShowLastError("Looking up restore privilege LUID");
+		goto ErrRet;
+	}
+
+	if (!AdjustTokenPrivileges(hToken, FALSE, tp, sizeof privilege_buffer, NULL, NULL))
+	{
+		ShowLastError("Adjust privileges");
+		goto ErrRet;
+	}
+
+	CloseHandle(hToken);
+	return 1;
+ErrRet:
+	if (hToken != INVALID_HANDLE_VALUE) CloseHandle(hToken);
+	return 0;
+}
+
 static PhatBool_t MountVHD()
 {
 	WCHAR vhd_path[4096];
@@ -65,6 +110,7 @@ static PhatBool_t MountVHD()
 		return 0;
 	}
 
+	GetPrivileged();
 
 	VIRTUAL_STORAGE_TYPE storageType = { 0 };
 	storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHD;
@@ -109,8 +155,7 @@ static PhatBool_t UnmountVHD()
 		return 0;
 	}
 
-	OPEN_VIRTUAL_DISK_PARAMETERS params = { 0 };
-	params.Version = OPEN_VIRTUAL_DISK_VERSION_1;
+	GetPrivileged();
 
 	VIRTUAL_STORAGE_TYPE storageType = { 0 };
 	storageType.DeviceId = VIRTUAL_STORAGE_TYPE_DEVICE_VHD;
@@ -122,7 +167,7 @@ static PhatBool_t UnmountVHD()
 		vhd_path,
 		VIRTUAL_DISK_ACCESS_DETACH,
 		OPEN_VIRTUAL_DISK_FLAG_NONE,
-		&params,
+		NULL,
 		&vhd_handle
 	);
 

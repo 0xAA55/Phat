@@ -1336,6 +1336,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 	uint8_t checksum;
 	Phat_p phat = dir_info->phat;
 
+	lfnitem = (Phat_LFN_Entry_p)&diritem;
 	dir_info->LFN_length = 0;
 	for (;;)
 	{
@@ -1344,7 +1345,6 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 		if (Phat_IsValidLFNEntry(&diritem))
 		{
 			// LFN entry
-			lfnitem = (Phat_LFN_Entry_p)&diritem;
 			if (no_checksum)
 			{
 				no_checksum = 0;

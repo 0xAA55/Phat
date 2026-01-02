@@ -1433,6 +1433,46 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 	}
 }
 
+static PhatState Phat_FindFirstLFNEntry(Phat_DirInfo_p dir_info)
+{
+	PhatState ret;
+	Phat_DirItem_t diritem;
+	Phat_LFN_Entry_p lfnitem;
+	uint8_t sfn_checksum;
+
+	lfnitem = (Phat_LFN_Entry_p)&diritem;
+	ret = Phat_GetDirItem(dir_info, &diritem);
+	if (ret != PhatState_OK) return ret;
+	if (Phat_IsValidLFNEntry(&diritem)) return PhatState_InvalidParameter;
+	else if (diritem.file_name_8_3[0] == 0xE5)
+	{
+		// Deleted entry
+		return PhatState_InvalidParameter;
+	}
+	else if (diritem.file_name_8_3[0] == 0x00)
+	{
+		// End of directory
+		return PhatState_InvalidParameter;
+	}
+	else
+	{
+		sfn_checksum = Phat_LFN_ChkSum(diritem.file_name_8_3);
+		for (;;)
+		{
+			dir_info->cur_diritem--;
+			ret = Phat_GetDirItem(dir_info, &diritem);
+			if (ret != PhatState_OK) return ret;
+			if (lfnitem->attributes != ATTRIB_LFN || lfnitem->order == 0xE5)
+			{
+				dir_info->cur_diritem++;
+				return PhatState_OK;
+			}
+			if (lfnitem->checksum != sfn_checksum || !Phat_IsValidLFNEntry(&diritem)) return PhatState_FSError;
+			if (lfnitem->order & 0x40) return PhatState_OK;
+		}
+	}
+}
+
 void Phat_CloseDir(Phat_DirInfo_p dir_info)
 {
 	memset(dir_info, 0, sizeof * dir_info);

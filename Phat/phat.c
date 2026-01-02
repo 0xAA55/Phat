@@ -29,7 +29,34 @@ typedef struct Phat_MBR_s
 	uint16_t boot_signature;
 }Phat_MBR_t, *Phat_MBR_p;
 
-typedef struct Phat_DBR_s
+typedef struct Phat_DBR_FAT_s
+{
+	uint8_t jump_boot[3];
+	uint8_t OEM_name[8];
+	uint16_t bytes_per_sector;
+	uint8_t sectors_per_cluster;
+	uint16_t reserved_sector_count;
+	uint8_t num_FATs;
+	uint16_t root_entry_count;
+	uint16_t total_sectors_16;
+	uint8_t media;
+	uint16_t FAT_size;
+	uint16_t sectors_per_track;
+	uint16_t num_heads;
+	uint32_t hidden_sectors;
+	uint32_t total_sectors_32;
+	uint8_t BIOS_drive_number;
+	uint8_t first_head;
+	uint8_t extension_flag;
+	uint32_t volume_ID;
+	uint8_t volume_label[11];
+	uint8_t file_system_type[8];
+	uint8_t boot_code[447];
+	uint8_t dirty;
+	uint16_t boot_sector_signature;
+}Phat_DBR_FAT_t, *Phat_DBR_FAT_p;
+
+typedef struct Phat_DBR_FAT32_s
 {
 	uint8_t jump_boot[3];
 	uint8_t OEM_name[8];
@@ -57,10 +84,9 @@ typedef struct Phat_DBR_s
 	uint32_t volume_ID;
 	uint8_t volume_label[11];
 	uint8_t file_system_type[8];
-	uint8_t boot_code[419];
-	uint8_t dirty;
+	uint8_t boot_code[420];
 	uint16_t boot_sector_signature;
-}Phat_DBR_t, *Phat_DBR_p;
+}Phat_DBR_FAT32_t, *Phat_DBR_FAT32_p;
 
 typedef struct Phat_FSInfo_s
 {
@@ -525,7 +551,7 @@ static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting
 	return 1;
 }
 
-static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_p dbr)
+static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_FAT32_p dbr)
 {
 	if (dbr->boot_sector_signature != 0xAA55) return 0;
 	if (dbr->bytes_per_sector == 0) return 0;
@@ -538,7 +564,7 @@ static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_p dbr)
 
 static PhatBool_t Phat_IsSectorMBR(const Phat_MBR_p mbr)
 {
-	if (Phat_IsSectorDBR((Phat_DBR_p)mbr)) return 0;
+	if (Phat_IsSectorDBR((Phat_DBR_FAT32_p)mbr)) return 0;
 	if (mbr->boot_signature != 0xAA55) return 0;
 	for (size_t i = 0; i < 4; i++)
 	{
@@ -637,10 +663,10 @@ static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flu
 	}
 	else
 	{
-		Phat_DBR_p dbr;
+		Phat_DBR_FAT_p dbr;
 		ret = Phat_ReadSectorThroughCache(phat, phat->partition_start_LBA, &cached_sector);
 		if (ret != PhatState_OK) return ret;
-		dbr = (Phat_DBR_p)cached_sector->data;
+		dbr = (Phat_DBR_FAT_p)cached_sector->data;
 		dbr->dirty = is_dirty ? 1 : 0;
 		Phat_SetCachedSectorModified(cached_sector);
 	}
@@ -667,10 +693,10 @@ static PhatState Phat_CheckIsDirty(Phat_p phat, PhatBool_t *is_dirty)
 	}
 	else
 	{
-		Phat_DBR_p dbr;
+		Phat_DBR_FAT_p dbr;
 		ret = Phat_ReadSectorThroughCache(phat, phat->partition_start_LBA, &cached_sector);
 		if (ret != PhatState_OK) return ret;
-		dbr = (Phat_DBR_p)cached_sector->data;
+		dbr = (Phat_DBR_FAT_p)cached_sector->data;
 		*is_dirty = dbr->dirty;
 	}
 	return PhatState_OK;
@@ -685,7 +711,8 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	PhatState ret = PhatState_OK;
 	Phat_SectorCache_p cached_sector;
 	Phat_MBR_p mbr;
-	Phat_DBR_p dbr;
+	Phat_DBR_FAT_p dbr;
+	Phat_DBR_FAT32_p dbr_32;
 	Phat_FSInfo_p fsi;
 	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA, &cached_sector);
 	if (ret != PhatState_OK) return ret;
@@ -705,56 +732,78 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 		return PhatState_InvalidParameter;
 	}
 
-	dbr = (Phat_DBR_p)cached_sector->data;
-	if (!Phat_IsSectorDBR(dbr)) return PhatState_FSNotFat;
+	dbr = (Phat_DBR_FAT_p)cached_sector->data;
+	dbr_32 = (Phat_DBR_FAT32_p)cached_sector->data;
+	if (!Phat_IsSectorDBR(dbr_32)) return PhatState_FSNotFat;
 	if (!memcmp(dbr->file_system_type, "FAT12   ", 8))
 		phat->FAT_bits = 12;
 	else if (!memcmp(dbr->file_system_type, "FAT16   ", 8))
 		phat->FAT_bits = 16;
-	else if (!memcmp(dbr->file_system_type, "FAT32   ", 8))
+	else if (!memcmp(dbr_32->file_system_type, "FAT32   ", 8))
 		phat->FAT_bits = 32;
 	else
 		return PhatState_FSNotFat;
-	phat->FAT_size_in_sectors = (phat->FAT_bits == 32) ? dbr->FAT_size_32 : dbr->FAT_size_16;
-	end_of_FAT_LBA = dbr->reserved_sector_count + (LBA_t)dbr->num_FATs * phat->FAT_size_in_sectors;
 	phat->partition_start_LBA = partition_start_LBA;
-	phat->total_sectors = total_sectors;
-	phat->num_FATs = dbr->num_FATs;
-	phat->FAT1_start_LBA = dbr->reserved_sector_count;
-	phat->root_dir_cluster = (phat->FAT_bits == 32) ? dbr->root_dir_cluster : 0;
-	phat->root_dir_start_LBA = end_of_FAT_LBA + ((phat->FAT_bits == 32) ? (LBA_t)(phat->root_dir_cluster - 2) * dbr->sectors_per_cluster : 0);
-	phat->data_start_LBA = phat->root_dir_start_LBA + ((phat->FAT_bits == 32) ? 0 : (LBA_t)((dbr->root_entry_count * 32) + (dbr->bytes_per_sector - 1)) / dbr->bytes_per_sector);
-	phat->bytes_per_sector = dbr->bytes_per_sector;
-	phat->sectors_per_cluster = dbr->sectors_per_cluster;
-	phat->num_diritems_in_a_sector = phat->bytes_per_sector / 32;
-	phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
-	phat->num_FAT_entries = (phat->FAT_size_in_sectors * phat->bytes_per_sector * 8) / phat->FAT_bits;
-	phat->FATs_are_same = !dbr->FATs_are_different;
-	switch (phat->FAT_bits)
+	if (phat->FAT_bits != 32)
 	{
-	case 12: phat->end_of_cluster_chain = 0x0FF8; break;
-	case 16: phat->end_of_cluster_chain = 0xFFF8; break;
-	case 32: phat->end_of_cluster_chain = 0x0FFFFFF8; break;
-	}
-	phat->max_valid_cluster = phat->num_FAT_entries + 1;
-
-	// Read FSInfo sector
-	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 1, &cached_sector);
-	if (ret != PhatState_OK) return ret;
-	fsi = (Phat_FSInfo_p)cached_sector->data;
-	if (fsi->lead_signature == 0x41615252 && fsi->struct_signature == 0x61417272 && fsi->trail_signature == 0xAA55)
-	{
-		phat->has_FSInfo = 1;
-		phat->free_clusters = fsi->free_cluster_count;
-		phat->next_free_cluster = fsi->next_free_cluster;
+		phat->FAT_size_in_sectors = dbr->FAT_size;
+		end_of_FAT_LBA = dbr->reserved_sector_count + (LBA_t)dbr->num_FATs * phat->FAT_size_in_sectors;
+		phat->total_sectors = dbr->total_sectors_16 ? dbr->total_sectors_16 : dbr->total_sectors_32;
+		phat->num_FATs = dbr->num_FATs;
+		phat->FAT1_start_LBA = dbr->reserved_sector_count;
+		phat->root_dir_cluster = 0;
+		phat->root_dir_start_LBA = end_of_FAT_LBA;
+		phat->data_start_LBA = phat->root_dir_start_LBA + (((LBA_t)dbr->root_entry_count * 32) + (dbr->bytes_per_sector - 1)) / dbr->bytes_per_sector;
+		phat->bytes_per_sector = dbr->bytes_per_sector;
+		phat->sectors_per_cluster = dbr->sectors_per_cluster;
+		phat->num_diritems_in_a_sector = phat->bytes_per_sector / 32;
+		phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
+		phat->num_FAT_entries = (phat->FAT_size_in_sectors * phat->bytes_per_sector * 8) / phat->FAT_bits;
+		phat->FATs_are_same = 1;
+		switch (phat->FAT_bits)
+		{
+		case 12: phat->end_of_cluster_chain = 0x0FF8; break;
+		case 16: phat->end_of_cluster_chain = 0xFFF8; break;
+		}
+		phat->max_valid_cluster = phat->num_FAT_entries + 1;
 	}
 	else
 	{
-		phat->has_FSInfo = 0;
-		ret = Phat_SearchForFreeCluster(phat, 0, &phat->next_free_cluster);
-		if (ret != PhatState_OK) phat->next_free_cluster = 2;
-		ret = Phat_SumFreeClusters(phat, &phat->free_clusters);
-		if (ret != PhatState_OK) phat->free_clusters = 0;
+		phat->FAT_size_in_sectors = dbr_32->FAT_size_16 ? dbr_32->FAT_size_16 : dbr_32->FAT_size_32;
+		end_of_FAT_LBA = dbr_32->reserved_sector_count + (LBA_t)dbr_32->num_FATs * phat->FAT_size_in_sectors;
+		phat->total_sectors = dbr_32->total_sectors_16 ? dbr_32->total_sectors_16: dbr_32->total_sectors_32;
+		phat->num_FATs = dbr_32->num_FATs;
+		phat->FAT1_start_LBA = dbr_32->reserved_sector_count;
+		phat->root_dir_cluster = dbr_32->root_dir_cluster;
+		phat->root_dir_start_LBA = end_of_FAT_LBA + (LBA_t)(phat->root_dir_cluster - 2) * dbr_32->sectors_per_cluster;
+		phat->data_start_LBA = phat->root_dir_start_LBA;
+		phat->bytes_per_sector = dbr_32->bytes_per_sector;
+		phat->sectors_per_cluster = dbr_32->sectors_per_cluster;
+		phat->num_diritems_in_a_sector = phat->bytes_per_sector / 32;
+		phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
+		phat->num_FAT_entries = (phat->FAT_size_in_sectors * phat->bytes_per_sector * 8) / phat->FAT_bits;
+		phat->FATs_are_same = !dbr_32->FATs_are_different;
+		phat->end_of_cluster_chain = 0x0FFFFFF8;
+		phat->max_valid_cluster = phat->num_FAT_entries + 1;
+
+		// Read FSInfo sector
+		ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 1, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		fsi = (Phat_FSInfo_p)cached_sector->data;
+		if (fsi->lead_signature == 0x41615252 && fsi->struct_signature == 0x61417272 && fsi->trail_signature == 0xAA55)
+		{
+			phat->has_FSInfo = 1;
+			phat->free_clusters = fsi->free_cluster_count;
+			phat->next_free_cluster = fsi->next_free_cluster;
+		}
+		else
+		{
+			phat->has_FSInfo = 0;
+			ret = Phat_SearchForFreeCluster(phat, 0, &phat->next_free_cluster);
+			if (ret != PhatState_OK) phat->next_free_cluster = 2;
+			ret = Phat_SumFreeClusters(phat, &phat->free_clusters);
+			if (ret != PhatState_OK) phat->free_clusters = 0;
+		}
 	}
 
 	ret = Phat_CheckIsDirty(phat, &phat->is_dirty);

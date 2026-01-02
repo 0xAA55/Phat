@@ -2243,9 +2243,9 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 		if (ret != PhatState_OK) return ret;
 		file_info->modified = 1;
 		file_info->file_pointer += bytes_to_write;
-		if (file_info->file_pointer > file_info->file_size) file_info->file_size = file_info->file_pointer;
 		*bytes_written += bytes_to_write;
 	}
+	if (file_info->file_pointer > file_info->file_size) file_info->file_size = file_info->file_pointer;
 	return PhatState_OK;
 }
 

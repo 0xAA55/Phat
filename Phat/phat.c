@@ -1297,7 +1297,7 @@ static PhatState Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_
 		if (!wchar) goto Ended;
 	}
 Ended:
-	if (lfn_item->order & 0x40) buffer->LFN_length = write_pos - 1;
+	if (lfn_item->order & 0x40) buffer->LFN_length = write_pos % 13 ? write_pos - 1 : write_pos;
 	return PhatState_OK;
 }
 
@@ -1817,7 +1817,7 @@ static PhatState Phat_CreateNewItemInDir(Phat_DirInfo_p dir_info, const WChar_p 
 	Phat_DirItem_t dir_item;
 	Phat_p phat = dir_info->phat;
 
-	itemname_len = Phat_Wcslen(itemname) + 1;
+	itemname_len = Phat_Wcslen(itemname);
 	if (itemname_len > MAX_LFN) return PhatState_NameTooLong;
 
 	ret = Phat_FindItem(phat, itemname, dir_info);
@@ -1949,6 +1949,7 @@ static PhatState Phat_CreateNewItemInDir(Phat_DirInfo_p dir_info, const WChar_p 
 			{
 				WChar_t ch = 0xFFFF;
 				if (j < copy_len) ch = itemname[offset + j];
+				if (j == copy_len) ch = 0;
 				if (j < 5)
 					lfn_entry.name1[j] = ch;
 				else if (j < 11)

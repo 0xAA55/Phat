@@ -2131,6 +2131,7 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 	LBA_t FPLBA;
 	size_t sectors_to_write;
 	static uint32_t dummy;
+	Phat_DirInfo_p dir_info = &file_info->file_item;
 
 	if (!file_info || !buffer || !bytes_to_write) return PhatState_InvalidParameter;
 	if (file_info->readonly) return PhatState_ReadOnly;
@@ -2142,7 +2143,6 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 	{
 		// Allocate cluster for empty file
 		uint32_t new_cluster = 0;
-		Phat_DirInfo_p dir_info = &file_info->file_item;
 		Phat_DirItem_t dir_item;
 		ret = Phat_AllocateCluster(phat, &new_cluster);
 		if (ret != PhatState_OK) return ret;

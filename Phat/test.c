@@ -22,6 +22,8 @@ int main(int argc, char**argv)
 	uint32_t file_size;
 	char *file_buf = NULL;
 
+	system("chcp 65001");
+
 	V(Phat_Init(&phat));
 	V(Phat_Mount(&phat, 0));
 

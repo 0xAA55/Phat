@@ -18,7 +18,7 @@ typedef LBA_t *LBA_p;
 #define SDMMC_DATATIMEOUT 5000000
 #endif
 
-typedef int PhatBool_t, *PhatBool_p;
+typedef uint8_t PhatBool_t, *PhatBool_p;
 
 typedef PhatBool_t(*FnOpenDevice)(void *userdata);
 typedef PhatBool_t(*FnReadSector)(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);

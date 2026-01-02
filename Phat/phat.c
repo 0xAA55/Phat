@@ -2332,6 +2332,8 @@ PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path)
 		phat->filename_buffer[dirname_len] = 0;
 		ret = Phat_CreateNewItemInDir(&dir_info, phat->filename_buffer, ATTRIB_DIRECTORY);
 		if (ret != PhatState_OK) return ret;
+		ret = Phat_ChDir(&dir_info, phat->filename_buffer);
+		if (ret != PhatState_OK) return ret;
 		if (!*ch) return PhatState_OK;
 		while (*ch == L'/' || *ch == L'\\') ch++;
 		p = ch;

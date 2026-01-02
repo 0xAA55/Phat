@@ -1824,8 +1824,9 @@ static PhatState Phat_CreateNewItemInDir(Phat_DirInfo_p dir_info, const WChar_p 
 
 	itemname_len = Phat_Wcslen(itemname);
 	if (itemname_len > MAX_LFN) return PhatState_NameTooLong;
+	if (!Phat_IsValidFilename(itemname)) return PhatState_BadFileName;
 
-	ret = Phat_FindItem(phat, itemname, dir_info);
+	ret = Phat_FindItem(phat, itemname, dir_info, NULL);
 	switch (ret)
 	{
 	case PhatState_OK:

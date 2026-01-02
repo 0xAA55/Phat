@@ -1571,24 +1571,6 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 	}
 }
 
-static PhatState Phat_FindFile(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
-{
-	PhatState ret;
-	Phat_OpenRootDir(phat, dir_info);
-	ret = Phat_FindItem(phat, path, dir_info, NULL);
-	switch (ret)
-	{
-	case PhatState_OK:
-		if (dir_info->attributes & ATTRIB_DIRECTORY)
-			return PhatState_IsADirectory;
-		return PhatState_OK;
-	case PhatState_EndOfDirectory:
-		return PhatState_FileNotFound;
-	default:
-		return ret;
-	}
-}
-
 PhatBool_t Phat_IsValidFilename(WChar_p filename)
 {
 	size_t length = 0;

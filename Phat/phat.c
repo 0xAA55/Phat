@@ -1935,11 +1935,11 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	if (file_info->file_pointer + bytes_to_read > file_info->file_size)
 		bytes_to_read = file_info->file_size - file_info->file_pointer;
 	offset_in_sector = file_info->file_pointer % 512;
-	ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 0);
-	if (ret != PhatState_OK) return ret;
 	if (offset_in_sector)
 	{
 		size_t to_copy;
+		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 0);
+		if (ret != PhatState_OK) return ret;
 		if (file_info->sector_buffer_LBA != FPLBA)
 		{
 			ret = Phat_ReadSectorsWithoutCache(phat, FPLBA, 1, file_info->sector_buffer);
@@ -1989,7 +1989,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 		file_info->sector_buffer_LBA = FPLBA;
 		memcpy(buffer, file_info->sector_buffer, bytes_to_read);
 		file_info->file_pointer += bytes_to_read;
-		*bytes_read += 512;
+		*bytes_read += bytes_to_read;
 	}
 	return file_info->file_pointer >= file_info->file_size ? PhatState_EndOfFile : PhatState_OK;
 }
@@ -2026,11 +2026,11 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 		file_info->first_cluster = new_cluster;
 		dir_info->first_cluster = new_cluster;
 	}
-	ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 1);
-	if (ret != PhatState_OK) return ret;
 	if (offset_in_sector)
 	{
 		size_t to_copy;
+		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 1);
+		if (ret != PhatState_OK) return ret;
 		if (file_info->sector_buffer_LBA != FPLBA)
 		{
 			ret = Phat_ReadSectorsWithoutCache(phat, FPLBA, 1, file_info->sector_buffer);
@@ -2076,10 +2076,9 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 		ret = Phat_WriteSectorsWithoutCache(phat, FPLBA, 1, file_info->sector_buffer);
 		if (ret != PhatState_OK) return ret;
 		file_info->modified = 1;
-		file_info->sector_buffer_LBA = FPLBA;
 		file_info->file_pointer += bytes_to_write;
 		if (file_info->file_pointer > file_info->file_size) file_info->file_size = file_info->file_pointer;
-		*bytes_written += 512;
+		*bytes_written += bytes_to_write;
 	}
 	return PhatState_OK;
 }

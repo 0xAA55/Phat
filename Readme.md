@@ -105,10 +105,14 @@ FailExit:
 
 ## Currently Supported
 
-* Basic implementation for FAT32.
+* Basic implementation for FAT12/16/32.
+	* Iterate through directory
+	* Open file(with creation or readonly)
+	* Read file
+	* Write file
+	* Seek file
+	* Delete file
+	* Create directory
+	* Remove directory
 * Debugging on Windows by accessing a virtual drive.
 * Support for multiple partitions.
-
-## TODO
-
-* Testing for FAT12/FAT16.

@@ -1546,7 +1546,12 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 				!memcmp(dirname_ptr, dir_info->LFN_name, dirname_len * sizeof(WChar_t)))
 			{
 				uint32_t dir_cluster;
-				if (*end_of_dirname == 0) return PhatState_OK;
+				if (*end_of_dirname == 0)
+				{
+					// Point to the found item's SLN entry
+					dir_info->cur_diritem--;
+					return PhatState_OK;
+				}
 				if ((dir_info->attributes & ATTRIB_DIRECTORY) == 0) return PhatState_NotADirectory;
 				end_of_dirname++;
 				while (*end_of_dirname == L'/' || *end_of_dirname == L'\\')end_of_dirname++;

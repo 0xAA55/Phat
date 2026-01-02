@@ -2282,25 +2282,44 @@ PhatState Phat_CloseFile(Phat_FileInfo_p file_info)
 	return PhatState_OK;
 }
 
-PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p dirname)
+PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path)
 {
 	Phat_DirInfo_t dir_info;
 	PhatState ret;
+	WChar_p p = path;
+	WChar_p ch;
+	size_t dirname_len;
 
-	ret = Phat_FindDirectory(phat, dirname, &dir_info);
+	Phat_OpenRootDir(phat, &dir_info);
+
+	ret = Phat_FindItem(phat, p, &dir_info, &p);
 	switch (ret)
 	{
 	case PhatState_OK:
-		return PhatState_DirectoryAlreadyExists;
-	case PhatState_DirectoryNotFound:
+		if (dir_info.attributes & ATTRIB_DIRECTORY)
+			return PhatState_DirectoryAlreadyExists;
+		else
+			return PhatState_FileAlreadyExists;
+		return PhatState_NotADirectory;
+	case PhatState_EndOfDirectory:
 		break;
-	case PhatState_NotADirectory:
-		return PhatState_FileAlreadyExists;
 	default:
 		return ret;
 	}
-
-	return Phat_CreateNewItemInDir(&dir_info, dirname, ATTRIB_DIRECTORY);
+	for (;;)
+	{
+		ch = p;
+		while (*ch && *ch != L'/' && *ch != L'\\') ch++;
+		dirname_len = (size_t)(ch - p);
+		if (dirname_len > MAX_LFN) return PhatState_NameTooLong;
+		memcpy(phat->filename_buffer, p, dirname_len * sizeof(WChar_t));
+		phat->filename_buffer[dirname_len] = 0;
+		ret = Phat_CreateNewItemInDir(&dir_info, phat->filename_buffer, ATTRIB_DIRECTORY);
+		if (ret != PhatState_OK) return ret;
+		if (!*ch) return PhatState_OK;
+		while (*ch == L'/' || *ch == L'\\') ch++;
+		p = ch;
+	}
 }
 
 PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)

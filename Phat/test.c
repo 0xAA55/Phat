@@ -56,7 +56,7 @@ int main(int argc, char**argv)
 	V_(Phat_CreateDirectory(&phat, L"TestPhatMkDir"));
 	V_(Phat_RemoveDirectory(&phat, L"TestPhatMkDir"));
 
-	V_(Phat_OpenFile(&phat, L"TestPhat/The Biography of John Wok.txt", 1, &file_info));
+	V_(Phat_OpenFile(&phat, L"TestPhat/Deeper/The Biography of John Wok.txt", 1, &file_info));
 	Phat_GetFileSize(&file_info, &file_size);
 	file_buf = calloc(file_size + 1, 1);
 	if (!file_buf) goto FailExit;

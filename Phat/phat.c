@@ -1666,7 +1666,7 @@ static PhatState Phat_CreateNewItemInDir(Phat_DirInfo_p dir_info, const WChar_p 
 	uint8_t case_info = 0;
 	uint8_t items_needed;
 	uint8_t free_count;
-	uint32_t first_diritem;
+	uint32_t first_diritem = 0;
 	uint32_t first_cluster = 0;
 	size_t itemname_len;
 	int only83 = 0;
@@ -1857,6 +1857,7 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 		if (ret != PhatState_OK) return ret;
 	}
 	else if (ret != PhatState_OK) return ret;
+	file_info->modified = 0;
 	file_info->first_cluster = dir_info->first_cluster;
 	file_info->cur_cluster = dir_info->first_cluster;
 	file_info->file_size = dir_info->file_size;

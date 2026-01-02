@@ -2397,7 +2397,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 		{
 			dir_info.dir_current_cluster_index = 0;
 			dir_info.dir_current_cluster = dir_info.dir_start_cluster;
-			for (uint32_t i = last_dir_item; i <= cur_dir_item; i++)
+			for (uint32_t i = last_dir_item; i < cur_dir_item; i++)
 			{
 				dir_info.cur_diritem = i;
 				ret = Phat_GetDirItem(&dir_info, &dir_item);

@@ -26,13 +26,13 @@ static HANDLE hDevice = INVALID_HANDLE_VALUE;
 
 static void ShowError(DWORD error_code, const char *performing)
 {
-	LPSTR message_buffer = NULL;
+	LPWSTR message_buffer = NULL;
 
 	//Ask Win32 to give us the string version of that message ID.
 	//The parameters we pass in, tell Win32 to create the buffer that holds the message for us (because we don't yet know how long the message string will be).
-	size_t size = FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-		NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&message_buffer, 0, NULL);
-	fprintf(stderr, "%s: %s\n", performing, message_buffer);
+	size_t size = FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, error_code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&message_buffer, 0, NULL);
+	fprintf(stderr, "%s: %S\n", performing, message_buffer);
 	LocalFree(message_buffer);
 }
 

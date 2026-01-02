@@ -1511,7 +1511,7 @@ PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 }
 
 // Open a dir to the path, find the item if can (`PhatState_OK` will be returned), or return `PhatState_EndOfDirectory`
-static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info)
+static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info, WChar_p *next_path)
 {
 	PhatState ret;
 	WChar_p dirname_ptr;
@@ -1527,6 +1527,7 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 
 	for (;;)
 	{
+		if (next_path) *next_path = dirname_ptr;
 		end_of_dirname = dirname_ptr;
 		while (*end_of_dirname != 0 && *end_of_dirname != L'/' && *end_of_dirname != L'\\') end_of_dirname++;
 		dirname_len = (size_t)(end_of_dirname - dirname_ptr);
@@ -1566,7 +1567,7 @@ static PhatState Phat_FindFile(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 {
 	PhatState ret;
 	Phat_OpenRootDir(phat, dir_info);
-	ret = Phat_FindItem(phat, path, dir_info);
+	ret = Phat_FindItem(phat, path, dir_info, NULL);
 	switch (ret)
 	{
 	case PhatState_OK:

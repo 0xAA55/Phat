@@ -20,7 +20,7 @@ __weak PhatBool_t BSP_WriteSector(void *buffer, LBA_t LBA, size_t num_blocks, vo
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "VirtDisk.lib")
 
-static const WCHAR* BSP_DeviceFilePath = L"test.vhd";
+static const WCHAR* BSP_DeviceFilePath = L"test16.vhd";
 
 static HANDLE hDevice = INVALID_HANDLE_VALUE;
 

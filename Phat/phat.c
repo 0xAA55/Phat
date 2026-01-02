@@ -1099,16 +1099,7 @@ static PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_DirItem_p d
 	Phat_p phat = dir_info->phat;
 	uint32_t cur_diritem_in_cur_cluster = dir_info->cur_diritem % phat->num_diritems_in_a_cluster;
 
-	if (dir_info->dir_start_cluster == 0)
-	{
-		uint32_t new_cluster = 0;
-		ret = Phat_AllocateCluster(phat, &new_cluster);
-		if (ret != PhatState_OK) return ret;
-		dir_info->dir_start_cluster = new_cluster;
-		dir_info->dir_current_cluster = new_cluster;
-		ret = Phat_WipeCluster(phat, new_cluster);
-		if (ret != PhatState_OK) return ret;
-	}
+	if (dir_info->dir_start_cluster == 0) return PhatState_InternalError;
 	ret = Phat_UpdateClusterByDirItemIndex(dir_info, 1);
 	if (ret != PhatState_OK) return ret;
 	if (phat->FAT_bits == 32)

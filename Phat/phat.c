@@ -605,7 +605,7 @@ static PhatState Phat_SumFreeClusters(Phat_p phat, uint32_t *num_free_clusters_o
 
 static LBA_t Phat_ClusterToLBA(Phat_p phat, uint32_t cluster)
 {
-	return phat->data_start_LBA + (LBA_t)cluster * phat->sectors_per_cluster;
+	return phat->data_start_LBA + (LBA_t)(cluster - 2) * phat->sectors_per_cluster;
 }
 
 // Find next free cluster starting from phat->next_free_cluster
@@ -660,7 +660,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	phat->num_FATs = dbr->num_FATs;
 	phat->FAT1_start_LBA = dbr->reserved_sector_count;
 	phat->root_dir_cluster = (phat->FAT_bits == 32) ? dbr->root_dir_cluster : 0;
-	phat->root_dir_start_LBA = end_of_FAT_LBA + ((phat->FAT_bits == 32) ? (LBA_t)phat->root_dir_cluster * dbr->sectors_per_cluster : 0);
+	phat->root_dir_start_LBA = end_of_FAT_LBA + ((phat->FAT_bits == 32) ? (LBA_t)(phat->root_dir_cluster - 2) * dbr->sectors_per_cluster : 0);
 	phat->data_start_LBA = phat->root_dir_start_LBA + ((phat->FAT_bits == 32) ? 0 : (LBA_t)((dbr->root_entry_count * 32) + (dbr->bytes_per_sector - 1)) / dbr->bytes_per_sector);
 	phat->bytes_per_sector = dbr->bytes_per_sector;
 	phat->sectors_per_cluster = dbr->sectors_per_cluster;

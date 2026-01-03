@@ -234,6 +234,10 @@ void Phat_ToUpperDirectoryPath(WChar_p path)
 {
 	size_t length = 0;
 	PhatBool_t tail_trimming = 1;
+
+	// Check parameters
+	if (!path) return PhatState_InvalidParameter;
+
 	for (length = 0; path[length]; length++) {}
 	while (length > 0)
 	{
@@ -255,6 +259,10 @@ void Phat_NormalizePath(WChar_p path)
 	WChar_p write_ptr;
 	WChar_p start_ptr;
 	size_t length;
+
+	// Check parameters
+	if (!path) return PhatState_InvalidParameter;
+
 	read_ptr = path;
 	write_ptr = path;
 	while (*read_ptr == '/' || *read_ptr == '\\') read_ptr++;
@@ -303,8 +311,13 @@ void Phat_NormalizePath(WChar_p path)
 
 void Phat_PathToName(WChar_p path, WChar_p name)
 {
-	WChar_p chr = Phat_ToEndOfString(path);
+	WChar_p chr;
 	size_t length = 0;
+
+	// Check parameters
+	if (!path || !name) return PhatState_InvalidParameter;
+
+	chr = Phat_ToEndOfString(path);
 	// Remove trailing slashes
 	while (chr > path)
 	{
@@ -341,6 +354,8 @@ void Phat_PathToName(WChar_p path, WChar_p name)
 
 void Phat_PathToNameInPlace(WChar_p path)
 {
+	// Check parameters
+	if (!path) return PhatState_InvalidParameter;
 	Phat_PathToName(path, path);
 }
 
@@ -577,13 +592,15 @@ static PhatBool_t Phat_IsSectorMBR(const Phat_MBR_p mbr)
 
 PhatState Phat_Init(Phat_p phat)
 {
-	Phat_Date_t default_date =
+	// Check parameters
+	if (!phat) return PhatState_InvalidParameter;
+	static const Phat_Date_t default_date =
 	{
 		PHAT_DEFAULT_YEAR,
 		PHAT_DEFAULT_MONTH,
 		PHAT_DEFAULT_DAY,
 	};
-	Phat_Time_t default_time =
+	static const Phat_Time_t default_time =
 	{
 		PHAT_DEFAULT_HOUR,
 		PHAT_DEFAULT_MINUTE,
@@ -715,6 +732,10 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	Phat_DBR_FAT_p dbr;
 	Phat_DBR_FAT32_p dbr_32;
 	Phat_FSInfo_p fsi;
+
+	// Check parameters
+	if (!phat) return PhatState_InvalidParameter;
+
 	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA, &cached_sector);
 	if (ret != PhatState_OK) return ret;
 
@@ -838,6 +859,10 @@ static PhatState Phat_UpdateFSInfo(Phat_p phat)
 PhatState Phat_FlushCache(Phat_p phat)
 {
 	PhatState ret = PhatState_OK;
+
+	// Check parameters
+	if (!phat) return PhatState_InvalidParameter;
+
 	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
 	{
 		Phat_SectorCache_p cached_sector = &phat->cache[i];
@@ -852,14 +877,24 @@ PhatState Phat_FlushCache(Phat_p phat)
 
 PhatState Phat_Unmount(Phat_p phat)
 {
-	PhatState ret = Phat_MarkDirty(phat, phat->is_dirty, 1);
+	PhatState ret;
+
+	// Check parameters
+	if (!phat) return PhatState_InvalidParameter;
+
+	ret = Phat_MarkDirty(phat, phat->is_dirty, 1);
 	if (ret != PhatState_OK) return ret;
 	return PhatState_OK;
 }
 
 PhatState Phat_DeInit(Phat_p phat)
 {
-	PhatState ret = Phat_Unmount(phat);
+	PhatState ret;
+
+	// Check parameters
+	if (!phat) return PhatState_InvalidParameter;
+
+	ret = Phat_Unmount(phat);
 	if (ret != PhatState_OK) return ret;
 	if (!Phat_CloseDevice(&phat->driver)) return PhatState_DriverError;
 	Phat_DeInitDriver(&phat->driver);
@@ -869,8 +904,10 @@ PhatState Phat_DeInit(Phat_p phat)
 
 void Phat_SetCurDateTime(Phat_p phat, Phat_Date_p cur_date, Phat_Time_p cur_time)
 {
-	phat->cur_date = *cur_date;
-	phat->cur_time = *cur_time;
+	// Check parameters
+	if (!phat || (!cur_date && !cur_time)) return PhatState_InvalidParameter;
+	if (cur_date) phat->cur_date = *cur_date;
+	if (cur_time) phat->cur_time = *cur_time;
 }
 
 static PhatState Phat_WipeCluster(Phat_p phat, uint32_t cluster)
@@ -1336,6 +1373,9 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 	uint8_t checksum;
 	Phat_p phat = dir_info->phat;
 
+	// Check parameters
+	if (!dir_info) return PhatState_InvalidParameter;
+
 	lfnitem = (Phat_LFN_Entry_p)&diritem;
 	dir_info->LFN_length = 0;
 	for (;;)
@@ -1475,11 +1515,17 @@ static PhatState Phat_FindFirstLFNEntry(Phat_DirInfo_p dir_info)
 
 void Phat_CloseDir(Phat_DirInfo_p dir_info)
 {
+	// Check parameters
+	if (!dir_info) return PhatState_InvalidParameter;
+
 	memset(dir_info, 0, sizeof * dir_info);
 }
 
 void Phat_OpenRootDir(Phat_p phat, Phat_DirInfo_p dir_info)
 {
+	// Check parameters
+	if (!phat || !dir_info) return PhatState_InvalidParameter;
+
 	memset(dir_info, 0, sizeof * dir_info);
 	dir_info->phat = phat;
 	dir_info->dir_start_cluster = phat->root_dir_cluster;
@@ -1495,7 +1541,7 @@ PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname)
 	WChar_p end_of_dirname = NULL;
 	size_t dirname_len;
 
-	if (!dirname) return PhatState_InvalidParameter;
+	if (!dir_info || !dirname) return PhatState_InvalidParameter;
 
 	dirname_ptr = dirname;
 	dir_info->cur_diritem = 0;
@@ -1543,7 +1589,7 @@ PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname)
 PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
 {
 	WChar_p ptr;
-	if (!path) return PhatState_InvalidParameter;
+	if (!phat || !path || !dir_info) return PhatState_InvalidParameter;
 	ptr = path;
 	// Skip starting slash
 	while (*ptr == L'/' || *ptr == L'\\') ptr++;
@@ -1618,6 +1664,9 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 
 PhatBool_t Phat_IsValidFilename(WChar_p filename)
 {
+	// Check parameters
+	if (!filename) return PhatState_InvalidParameter;
+
 	size_t length = 0;
 	while (filename[length]) length++;
 	if (length == 0 || length > MAX_LFN) return 0;
@@ -2015,7 +2064,9 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 	WChar_p ch;
 	size_t dirname_len;
 
+	// Check parameters
 	if (!phat || !path || !file_info) return PhatState_InvalidParameter;
+
 	file_info->phat = phat;
 	dir_info = &file_info->file_item;
 	Phat_OpenRootDir(phat, dir_info);
@@ -2132,6 +2183,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_
 	size_t sectors_to_read;
 	static uint32_t dummy;
 
+	// Check parameters
 	if (!file_info || !buffer || !bytes_to_read) return PhatState_InvalidParameter;
 	if (!bytes_read) bytes_read = &dummy;
 	*bytes_read = 0;
@@ -2209,6 +2261,7 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 	static uint32_t dummy;
 	Phat_DirInfo_p dir_info = &file_info->file_item;
 
+	// Check parameters
 	if (!file_info || !buffer || !bytes_to_write) return PhatState_InvalidParameter;
 	if (file_info->readonly) return PhatState_ReadOnly;
 	if (file_info->file_item.attributes & ATTRIB_READ_ONLY) return PhatState_ReadOnly;
@@ -2290,6 +2343,9 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 
 PhatState Phat_SeekFile(Phat_FileInfo_p file_info, uint32_t position)
 {
+	// Check parameters
+	if (!file_info) return PhatState_InvalidParameter;
+
 	file_info->file_pointer = position;
 	if (Phat_IsEOF(file_info)) return PhatState_EndOfFile;
 	else return PhatState_OK;
@@ -2317,7 +2373,9 @@ PhatState Phat_CloseFile(Phat_FileInfo_p file_info)
 	Phat_p phat = file_info->phat;
 	Phat_DirInfo_p dir_info = &file_info->file_item;
 
+	// Check parameters
 	if (!file_info) return PhatState_InvalidParameter;
+
 	ret = Phat_GetDirItem(dir_info, &diritem);
 	if (ret != PhatState_OK) return ret;
 
@@ -2343,6 +2401,9 @@ PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path)
 	WChar_p p = path;
 	WChar_p ch;
 	size_t dirname_len;
+
+	// Check parameters
+	if (!phat || !path) return PhatState_InvalidParameter;
 
 	Phat_OpenRootDir(phat, &dir_info);
 
@@ -2387,6 +2448,9 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 	uint32_t parent_dir_start_cluster = 0;
 	uint32_t first_entry = 0;
 	uint32_t last_entry = 0;
+
+	// Check parameters
+	if (!phat || !path) return PhatState_InvalidParameter;
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
@@ -2448,6 +2512,10 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 	uint32_t first_entry = 0;
 	uint32_t last_entry = 0;
 
+	// Check parameters
+	if (!phat || !path) return PhatState_InvalidParameter;
+
+	Phat_OpenRootDir(phat, &dir_info);
 	ret = Phat_FindItem(phat, path, &dir_info, NULL);
 	if (ret != PhatState_OK) return ret;
 
@@ -2494,6 +2562,9 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name)
 	uint8_t ctime_tenths;
 	uint8_t attributes;
 	uint8_t case_info;
+
+	// Check parameters
+	if (!phat || !path || !new_name) return PhatState_InvalidParameter;
 
 	// Ensure the new name is valid
 	if (!Phat_IsValidFilename(new_name)) return PhatState_BadFileName;
@@ -2598,6 +2669,9 @@ PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath)
 	uint8_t attributes;
 	uint8_t case_info;
 
+	// Check parameters
+	if (!phat || !oldpath || !newpath) return PhatState_InvalidParameter;
+
 	// Ensure the target directory is valid
 	ret = Phat_OpenDir(phat, newpath, &dir_info2);
 	if (ret != PhatState_OK) return ret;
@@ -2629,6 +2703,7 @@ PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath)
 	}
 	ret = Phat_OpenDir(phat, newpath, &dir_info2);
 	if (ret != PhatState_OK) return ret;
+
 	// Check if the target directory contains the same name file
 	Phat_Wcscpy(phat->filename_buffer, dir_info1.LFN_name);
 	ret = Phat_FindItem(phat, phat->filename_buffer, &dir_info2, NULL);

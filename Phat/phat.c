@@ -2495,11 +2495,35 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name)
 	uint8_t attributes;
 	uint8_t case_info;
 
+	// Ensure the new name is valid
 	if (!Phat_IsValidFilename(new_name)) return PhatState_BadFileName;
 
+	// If the new name equals to the old name, return OK
+	if (!Phat_Wcscmp(new_name, dir_info.LFN_name)) return PhatState_OK;
+
+	// Find the file/dir we want to rename
 	Phat_OpenRootDir(phat, &dir_info);
 	ret = Phat_FindItem(phat, path, &dir_info, NULL);
 	if (ret != PhatState_OK) return ret;
+
+	// Check if the current directory contains the file that's name is same as the new name
+	ret = Phat_FindItem(phat, new_name, &dir_info, NULL);
+	if (ret == PhatState_OK)
+	{
+		// Find item is successful, the item is found, so can't move the file over there.
+		if (dir_info.attributes & ATTRIB_DIRECTORY)
+			return PhatState_DirectoryAlreadyExists;
+		else
+			return PhatState_FileAlreadyExists;
+	}
+	else if (ret != PhatState_EndOfDirectory) return ret;
+
+	// Find the file/dir we want to rename
+	Phat_OpenRootDir(phat, &dir_info);
+	ret = Phat_FindItem(phat, path, &dir_info, NULL);
+	if (ret != PhatState_OK) return ret;
+
+	// Get the file/dir informations
 	ret = Phat_GetDirItem(&dir_info, &dir_item);
 	if (ret != PhatState_OK) return ret;
 
@@ -2514,13 +2538,12 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name)
 	attributes = dir_item.attributes;
 	case_info = dir_item.case_info;
 
-	if (!Phat_Wcscmp(new_name, dir_info.LFN_name)) return PhatState_OK;
-
 	last_entry = dir_info.cur_diritem;
 	ret = Phat_FindFirstLFNEntry(&dir_info);
 	if (ret != PhatState_OK) return ret;
 	first_entry = dir_info.cur_diritem;
 
+	// Remove the old entries
 	for (uint32_t i = first_entry; i <= last_entry; i++)
 	{
 		dir_info.cur_diritem = i;
@@ -2531,9 +2554,11 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name)
 		if (ret != PhatState_OK) return ret;
 	}
 
+	// Create the new entries
 	ret = Phat_CreateNewItemInDir(&dir_info, new_name, 0);
 	if (ret != PhatState_OK) return ret;
 
+	// Move the file/dir info into the new SFN entry
 	ret = Phat_GetDirItem(&dir_info, &dir_item);
 	if (ret != PhatState_OK) return ret;
 
@@ -2547,6 +2572,7 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name)
 	dir_item.last_access_date = adate;
 	dir_item.attributes = attributes;
 	dir_item.case_info = case_info;
+
 	ret = Phat_PutDirItem(&dir_info, &dir_item);
 	if (ret != PhatState_OK) return ret;
 

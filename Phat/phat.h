@@ -41,6 +41,8 @@
 #endif
 
 typedef uint16_t WChar_t, *WChar_p;
+typedef uint32_t Cluster_t, *Cluster_p;
+typedef Cluster_t FileSize_t, *FileSize_p;
 
 typedef struct Phat_SectorCache_s
 {
@@ -92,21 +94,21 @@ typedef struct Phat_s
 	uint8_t sectors_per_cluster;
 	uint8_t num_diritems_in_a_sector;
 	uint16_t num_diritems_in_a_cluster;
-	uint32_t num_FAT_entries;
+	Cluster_t num_FAT_entries;
 	PhatBool_t has_FSInfo;
-	uint32_t free_clusters;
-	uint32_t next_free_cluster;
-	uint32_t max_valid_cluster;
-	uint32_t end_of_cluster_chain;
+	Cluster_t free_clusters;
+	Cluster_t next_free_cluster;
+	Cluster_t max_valid_cluster;
+	Cluster_t end_of_cluster_chain;
 }Phat_t, *Phat_p;
 
 typedef struct Phat_DirInfo_s
 {
 	Phat_p phat;
-	uint32_t dir_start_cluster;
-	uint32_t dir_current_cluster;
-	uint32_t dir_current_cluster_index;
-	uint32_t cur_diritem;
+	Cluster_t dir_start_cluster;
+	Cluster_t dir_current_cluster;
+	Cluster_t dir_current_cluster_index;
+	Cluster_t cur_diritem;
 	uint8_t file_name_8_3[11];
 	uint8_t attributes;
 	Phat_Date_t cdate;
@@ -115,8 +117,8 @@ typedef struct Phat_DirInfo_s
 	Phat_Time_t mtime;
 	Phat_Date_t adate;
 	uint8_t sfn_checksum;
-	uint32_t file_size;
-	uint32_t first_cluster;
+	Cluster_t file_size;
+	Cluster_t first_cluster;
 	WChar_t LFN_name[MAX_LFN + 1];
 	uint16_t LFN_length;
 }Phat_DirInfo_t, *Phat_DirInfo_p;
@@ -125,11 +127,11 @@ typedef struct Phat_FileInfo_s
 {
 	Phat_p phat;
 	Phat_DirInfo_t file_item;
-	uint32_t first_cluster;
-	uint32_t file_pointer;
-	uint32_t cur_cluster;
-	uint32_t cur_cluster_index;
-	uint32_t file_size;
+	Cluster_t first_cluster;
+	Cluster_t file_pointer;
+	Cluster_t cur_cluster;
+	Cluster_t cur_cluster_index;
+	Cluster_t file_size;
 	PhatBool_t readonly;
 	PhatBool_t modified;
 	uint8_t sector_buffer[512];
@@ -195,13 +197,13 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
 void Phat_CloseDir(Phat_DirInfo_p dir_info);
 
 PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
-PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, uint32_t bytes_to_read, uint32_t *bytes_read);
-PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t bytes_to_write, uint32_t *bytes_written);
+PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, size_t bytes_to_read, size_t *bytes_read);
+PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, size_t bytes_to_write, size_t *bytes_written);
 PhatState Phat_CloseFile(Phat_FileInfo_p file_info);
 
-PhatState Phat_SeekFile(Phat_FileInfo_p file_info, uint32_t position);
-void Phat_GetFilePointer(Phat_FileInfo_p file_info, uint32_t *position);
-void Phat_GetFileSize(Phat_FileInfo_p file_info, uint32_t *size);
+PhatState Phat_SeekFile(Phat_FileInfo_p file_info, FileSize_t position);
+void Phat_GetFilePointer(Phat_FileInfo_p file_info, FileSize_t *position);
+void Phat_GetFileSize(Phat_FileInfo_p file_info, FileSize_t *size);
 PhatBool_t Phat_IsEOF(Phat_FileInfo_p file_info);
 
 PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path);

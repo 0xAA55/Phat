@@ -2477,3 +2477,79 @@ FailExit:
 	return ret;
 }
 
+PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name)
+{
+	PhatState ret;
+	Phat_DirInfo_t dir_info;
+	Phat_DirItem_t dir_item;
+	uint32_t first_entry;
+	uint32_t last_entry;
+	uint32_t first_cluster;
+	uint32_t file_size;
+	uint16_t cdate;
+	uint16_t ctime;
+	uint16_t mdate;
+	uint16_t mtime;
+	uint16_t adate;
+	uint8_t ctime_tenths;
+	uint8_t attributes;
+	uint8_t case_info;
+
+	if (!Phat_IsValidFilename(new_name)) return PhatState_BadFileName;
+
+	Phat_OpenRootDir(phat, &dir_info);
+	ret = Phat_FindItem(phat, path, &dir_info, NULL);
+	if (ret != PhatState_OK) return ret;
+	ret = Phat_GetDirItem(&dir_info, &dir_item);
+	if (ret != PhatState_OK) return ret;
+
+	first_cluster = dir_info.first_cluster;
+	file_size = dir_info.file_size;
+	cdate = dir_item.creation_date;
+	ctime = dir_item.creation_time;
+	mdate = dir_item.last_modification_date;
+	mtime = dir_item.last_modification_time;
+	adate = dir_item.last_access_date;
+	ctime_tenths = dir_item.creation_time_tenths;
+	attributes = dir_item.attributes;
+	case_info = dir_item.case_info;
+
+	if (!Phat_Wcscmp(new_name, dir_info.LFN_name)) return PhatState_OK;
+
+	last_entry = dir_info.cur_diritem;
+	ret = Phat_FindFirstLFNEntry(&dir_info);
+	if (ret != PhatState_OK) return ret;
+	first_entry = dir_info.cur_diritem;
+
+	for (uint32_t i = first_entry; i <= last_entry; i++)
+	{
+		dir_info.cur_diritem = i;
+		ret = Phat_GetDirItem(&dir_info, &dir_item);
+		if (ret != PhatState_OK) return ret;
+		dir_item.file_name_8_3[0] = 0xE5;
+		ret = Phat_PutDirItem(&dir_info, &dir_item);
+		if (ret != PhatState_OK) return ret;
+	}
+
+	ret = Phat_CreateNewItemInDir(&dir_info, new_name, 0);
+	if (ret != PhatState_OK) return ret;
+
+	ret = Phat_GetDirItem(&dir_info, &dir_item);
+	if (ret != PhatState_OK) return ret;
+
+	dir_item.first_cluster_low = first_cluster & 0xFFFF;
+	dir_item.first_cluster_high = first_cluster >> 16;
+	dir_item.file_size = file_size;
+	dir_item.creation_date = cdate;
+	dir_item.creation_time = ctime;
+	dir_item.last_modification_date = mdate;
+	dir_item.last_modification_time = mtime;
+	dir_item.last_access_date = adate;
+	dir_item.attributes = attributes;
+	dir_item.case_info = case_info;
+	ret = Phat_PutDirItem(&dir_info, &dir_item);
+	if (ret != PhatState_OK) return ret;
+
+	return PhatState_OK;
+}
+

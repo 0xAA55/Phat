@@ -207,6 +207,8 @@ PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path);
 PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path);
 PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path);
 
+PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name);
+
 const char *Phat_StateToString(PhatState s);
 
 #endif

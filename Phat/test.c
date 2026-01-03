@@ -21,8 +21,6 @@ int main(int argc, char**argv)
 	PhatState res = PhatState_OK;
 	Phat_DirInfo_t dir_info = { 0 };
 	Phat_FileInfo_t file_info = { 0 };
-	uint32_t file_size;
-	char *file_buf = NULL;
 
 	system("chcp 65001");
 
@@ -78,14 +76,23 @@ int main(int argc, char**argv)
 	}
 	Phat_CloseDir(&dir_info);
 
-	V_(Phat_OpenFile(&phat, L"TestPhat/MiddleDir/The Biography of John Wok.txt", 1, &file_info));
-	Phat_GetFileSize(&file_info, &file_size);
-	file_buf = calloc(file_size + 1, 1);
-	if (!file_buf) goto FailExit;
-	V_(Phat_ReadFile(&file_info, file_buf, file_size, NULL));
-	Phat_CloseFile(&file_info);
-	printf("File contents:\n%s\n", file_buf);
-	free(file_buf);
+	res = Phat_OpenFile(&phat, L"TestPhat/MiddleDir/The Biography of John Wok.txt", 1, &file_info);
+	if (res == PhatState_OK)
+	{
+		uint32_t file_size;
+		char *file_buf = NULL;
+		Phat_GetFileSize(&file_info, &file_size);
+		file_buf = calloc(file_size + 1, 1);
+		if (!file_buf) goto FailExit;
+		V_(Phat_ReadFile(&file_info, file_buf, file_size, NULL));
+		Phat_CloseFile(&file_info);
+		printf("File contents:\n%s\n", file_buf);
+		free(file_buf);
+	}
+	else
+	{
+		fprintf(stderr, "Could not open the file for read: %s\n", Phat_StateToString(res));
+	}
 
 FailExit:
 	V_(Phat_Unmount(&phat));

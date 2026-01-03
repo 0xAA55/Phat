@@ -2579,3 +2579,98 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name)
 	return PhatState_OK;
 }
 
+PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath)
+{
+	PhatState ret;
+	Phat_DirInfo_t dir_info1;
+	Phat_DirInfo_t dir_info2;
+	Phat_DirItem_t dir_item;
+	uint32_t first_entry;
+	uint32_t last_entry;
+	uint32_t first_cluster;
+	uint32_t file_size;
+	uint16_t cdate;
+	uint16_t ctime;
+	uint16_t mdate;
+	uint16_t mtime;
+	uint16_t adate;
+	uint8_t ctime_tenths;
+	uint8_t attributes;
+	uint8_t case_info;
+
+	// Ensure the target directory is valid
+	ret = Phat_OpenDir(phat, newpath, &dir_info2);
+	if (ret != PhatState_OK) return ret;
+
+	// Get to the parent directory of the object to be moved
+	Phat_OpenRootDir(phat, &dir_info1);
+	ret = Phat_FindItem(phat, oldpath, &dir_info1, NULL);
+	if (ret != PhatState_OK) return ret;
+
+	// Check if the target directory contains the same name file
+	Phat_Wcscpy(phat->filename_buffer, dir_info1.LFN_name);
+	ret = Phat_FindItem(phat, phat->filename_buffer, &dir_info2, NULL);
+	if (ret == PhatState_OK)
+	{
+		// Find item is successful, the item is found, so can't move the file over there.
+		if (dir_info2.attributes & ATTRIB_DIRECTORY)
+			return PhatState_DirectoryAlreadyExists;
+		else
+			return PhatState_FileAlreadyExists;
+	}
+	else if (ret != PhatState_EndOfDirectory) return ret;
+
+	// Get the file/dir informations
+	ret = Phat_GetDirItem(&dir_info1, &dir_item);
+	if (ret != PhatState_OK) return ret;
+
+	first_cluster = dir_info1.first_cluster;
+	file_size = dir_info1.file_size;
+	cdate = dir_item.creation_date;
+	ctime = dir_item.creation_time;
+	mdate = dir_item.last_modification_date;
+	mtime = dir_item.last_modification_time;
+	adate = dir_item.last_access_date;
+	ctime_tenths = dir_item.creation_time_tenths;
+	attributes = dir_item.attributes;
+	case_info = dir_item.case_info;
+
+	last_entry = dir_info1.cur_diritem;
+	ret = Phat_FindFirstLFNEntry(&dir_info1);
+	if (ret != PhatState_OK) return ret;
+	first_entry = dir_info1.cur_diritem;
+
+	// Create a file/dir in the target directory
+	ret = Phat_CreateNewItemInDir(&dir_info2, phat->filename_buffer, 0);
+	if (ret != PhatState_OK) return ret;
+
+	// Move the file/dir info into the new SFN entry
+	ret = Phat_GetDirItem(&dir_info2, &dir_item);
+	if (ret != PhatState_OK) return ret;
+
+	dir_item.first_cluster_low = first_cluster & 0xFFFF;
+	dir_item.first_cluster_high = first_cluster >> 16;
+	dir_item.file_size = file_size;
+	dir_item.creation_date = cdate;
+	dir_item.creation_time = ctime;
+	dir_item.last_modification_date = mdate;
+	dir_item.last_modification_time = mtime;
+	dir_item.last_access_date = adate;
+	dir_item.attributes = attributes;
+	dir_item.case_info = case_info;
+
+	ret = Phat_PutDirItem(&dir_info2, &dir_item);
+	if (ret != PhatState_OK) return ret;
+
+	// Remove the old path file entries
+	for (uint32_t i = first_entry; i <= last_entry; i++)
+	{
+		dir_info1.cur_diritem = i;
+		ret = Phat_GetDirItem(&dir_info1, &dir_item);
+		if (ret != PhatState_OK) return ret;
+		dir_item.file_name_8_3[0] = 0xE5;
+		ret = Phat_PutDirItem(&dir_info1, &dir_item);
+		if (ret != PhatState_OK) return ret;
+	}
+	return PhatState_OK;
+}

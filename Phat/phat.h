@@ -208,6 +208,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path);
 PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path);
 
 PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name);
+PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath);
 
 const char *Phat_StateToString(PhatState s);
 

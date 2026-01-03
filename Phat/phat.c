@@ -2607,6 +2607,28 @@ PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath)
 	ret = Phat_FindItem(phat, oldpath, &dir_info1, NULL);
 	if (ret != PhatState_OK) return ret;
 
+	// If the old path is the root directory, the move action is not allowed.
+	if (dir_info1.first_cluster == 0 || dir_info1.first_cluster == 2) return PhatState_InvalidParameter;
+
+	// Check if the new directory is the sub directory of the old path
+	// If so, the move will cause file system error so this must not be allowed.
+	for (;;)
+	{
+		if (dir_info2.dir_start_cluster == 0 || dir_info2.dir_start_cluster == 2) break;
+		ret = Phat_ChDir(&dir_info2, L"..");
+		if (ret == PhatState_DirectoryNotFound)
+		{
+			// A non root directory doesn't have a ".." error, this is a file system error
+			return PhatState_FSError;
+		}
+		if (ret != PhatState_OK) return ret;
+		if (dir_info2.dir_start_cluster == dir_info1.first_cluster)
+		{
+			return PhatState_InvalidParameter;
+		}
+	}
+	ret = Phat_OpenDir(phat, newpath, &dir_info2);
+	if (ret != PhatState_OK) return ret;
 	// Check if the target directory contains the same name file
 	Phat_Wcscpy(phat->filename_buffer, dir_info1.LFN_name);
 	ret = Phat_FindItem(phat, phat->filename_buffer, &dir_info2, NULL);

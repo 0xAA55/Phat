@@ -187,7 +187,7 @@ PhatBool_t Phat_IsValidFilename(WChar_p filename);
 PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable);
 PhatState Phat_FlushCache(Phat_p phat);
 PhatState Phat_Unmount(Phat_p phat);
-void Phat_SetCurDateTime(Phat_p phat, Phat_Date_p cur_date, Phat_Time_p cur_time);
+void Phat_SetCurDateTime(Phat_p phat, const Phat_Date_p cur_date, const Phat_Time_p cur_time);
 
 void Phat_OpenRootDir(Phat_p phat, Phat_DirInfo_p dir_info);
 PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname);

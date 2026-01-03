@@ -25,7 +25,7 @@ int main(int argc, char**argv)
 	system("chcp 65001");
 
 	V(Phat_Init(&phat));
-	V(Phat_Mount(&phat, 0));
+	V(Phat_Mount(&phat, 0, 1));
 
 	printf("==== Root directory files ====\n");
 	V(Phat_OpenDir(&phat, L"", &dir_info));

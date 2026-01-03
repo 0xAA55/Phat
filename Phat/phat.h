@@ -85,6 +85,7 @@ typedef struct Phat_s
 	uint16_t root_entry_count;
 	PhatBool_t FATs_are_same;
 	PhatBool_t is_dirty;
+	PhatBool_t write_enable;
 	uint8_t FAT_bits;
 	uint8_t num_FATs;
 	uint16_t bytes_per_sector;
@@ -181,7 +182,7 @@ void Phat_PathToName(WChar_p path, WChar_p name);
 void Phat_PathToNameInPlace(WChar_p path);
 PhatBool_t Phat_IsValidFilename(WChar_p filename);
 
-PhatState Phat_Mount(Phat_p phat, int partition_index);
+PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable);
 PhatState Phat_FlushCache(Phat_p phat);
 PhatState Phat_Unmount(Phat_p phat);
 void Phat_SetCurDateTime(Phat_p phat, Phat_Date_p cur_date, Phat_Time_p cur_time);

@@ -422,6 +422,7 @@ static PhatState Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorCache_p cac
 	PhatState ret;
 	if (Phat_IsCachedSectorValid(cached_sector) && !Phat_IsCachedSectorSync(cached_sector))
 	{
+		if (!phat->write_enable) return PhatState_InternalError;
 		ret = Phat_WriteBackCachedSector(phat, cached_sector);
 		if (ret != PhatState_OK) return ret;
 		Phat_SetCachedSectorSync(cached_sector);
@@ -677,6 +678,11 @@ static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flu
 			else
 				FAT_table[1] |= 0xFFFFFFFF;
 			Phat_SetCachedSectorModified(cached_sector);
+			if (flush_immediately)
+			{
+				ret = Phat_InvalidateCachedSector(phat, cached_sector);
+				if (ret != PhatState_OK) return ret;
+			}
 		}
 	}
 	else
@@ -687,11 +693,11 @@ static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flu
 		dbr = (Phat_DBR_FAT_p)cached_sector->data;
 		dbr->dirty = is_dirty ? 1 : 0;
 		Phat_SetCachedSectorModified(cached_sector);
-	}
-	if (flush_immediately)
-	{
-		ret = Phat_FlushCache(phat);
-		if (ret != PhatState_OK) return ret;
+		if (flush_immediately)
+		{
+			ret = Phat_InvalidateCachedSector(phat, cached_sector);
+			if (ret != PhatState_OK) return ret;
+		}
 	}
 	return PhatState_OK;
 }
@@ -721,7 +727,7 @@ static PhatState Phat_CheckIsDirty(Phat_p phat, PhatBool_t *is_dirty)
 }
 
 // Open a partition, load all of the informations from the DBR in order to manipulate files/directories
-PhatState Phat_Mount(Phat_p phat, int partition_index)
+PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 {
 	LBA_t partition_start_LBA = 0;
 	LBA_t total_sectors = 0;
@@ -753,6 +759,8 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	{
 		return PhatState_InvalidParameter;
 	}
+
+	phat->write_enable = write_enable;
 
 	dbr = (Phat_DBR_FAT_p)cached_sector->data;
 	dbr_32 = (Phat_DBR_FAT32_p)cached_sector->data;
@@ -833,9 +841,6 @@ PhatState Phat_Mount(Phat_p phat, int partition_index)
 	ret = Phat_CheckIsDirty(phat, &phat->is_dirty);
 	if (ret != PhatState_OK) return ret;
 
-	ret = Phat_MarkDirty(phat, 1, 1);
-	if (ret != PhatState_OK) return ret;
-
 	return PhatState_OK;
 }
 
@@ -866,11 +871,8 @@ PhatState Phat_FlushCache(Phat_p phat)
 	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
 	{
 		Phat_SectorCache_p cached_sector = &phat->cache[i];
-		if (Phat_IsCachedSectorValid(cached_sector))
-		{
-			ret = Phat_InvalidateCachedSector(phat, cached_sector);
-			if (ret != PhatState_OK) return ret;
-		}
+		ret = Phat_InvalidateCachedSector(phat, cached_sector);
+		if (ret != PhatState_OK) return ret;
 	}
 	return ret;
 }
@@ -882,8 +884,14 @@ PhatState Phat_Unmount(Phat_p phat)
 	// Check parameters
 	if (!phat) return PhatState_InvalidParameter;
 
-	ret = Phat_MarkDirty(phat, phat->is_dirty, 1);
+	ret = Phat_FlushCache(phat);
 	if (ret != PhatState_OK) return ret;
+
+	if (phat->write_enable)
+	{
+		ret = Phat_MarkDirty(phat, phat->is_dirty, 1);
+		if (ret != PhatState_OK) return ret;
+	}
 	return PhatState_OK;
 }
 
@@ -2067,6 +2075,8 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 	// Check parameters
 	if (!phat || !path || !file_info) return PhatState_InvalidParameter;
 
+	if (!readonly && !phat->write_enable) return PhatState_ReadOnly;
+
 	file_info->phat = phat;
 	dir_info = &file_info->file_item;
 	Phat_OpenRootDir(phat, dir_info);
@@ -2088,6 +2098,8 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 			}
 			else
 			{
+				ret = Phat_MarkDirty(phat, 1, 1);
+				if (ret != PhatState_OK) return ret;
 				memcpy(phat->filename_buffer, p, dirname_len * sizeof(WChar_t));
 				phat->filename_buffer[dirname_len] = 0;
 				ret = Phat_CreateNewItemInDir(dir_info, phat->filename_buffer, 0);
@@ -2263,7 +2275,7 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, uint32_t
 
 	// Check parameters
 	if (!file_info || !buffer || !bytes_to_write) return PhatState_InvalidParameter;
-	if (file_info->readonly) return PhatState_ReadOnly;
+	if (file_info->readonly || !phat->write_enable) return PhatState_ReadOnly;
 	if (file_info->file_item.attributes & ATTRIB_READ_ONLY) return PhatState_ReadOnly;
 	if (!bytes_written) bytes_written = &dummy;
 	*bytes_written = 0;
@@ -2376,18 +2388,21 @@ PhatState Phat_CloseFile(Phat_FileInfo_p file_info)
 	// Check parameters
 	if (!file_info) return PhatState_InvalidParameter;
 
-	ret = Phat_GetDirItem(dir_info, &diritem);
-	if (ret != PhatState_OK) return ret;
-
-	diritem.last_access_date = Phat_EncodeDate(&phat->cur_date);
-	if (file_info->modified)
+	if (phat->write_enable)
 	{
-		diritem.last_modification_date = Phat_EncodeDate(&phat->cur_date);
-		diritem.last_modification_time = Phat_EncodeTime(&phat->cur_time);
-		diritem.file_size = file_info->file_size;
+		ret = Phat_GetDirItem(dir_info, &diritem);
+		if (ret != PhatState_OK) return ret;
+
+		diritem.last_access_date = Phat_EncodeDate(&phat->cur_date);
+		if (file_info->modified)
+		{
+			diritem.last_modification_date = Phat_EncodeDate(&phat->cur_date);
+			diritem.last_modification_time = Phat_EncodeTime(&phat->cur_time);
+			diritem.file_size = file_info->file_size;
+		}
+		ret = Phat_PutDirItem(dir_info, &diritem);
+		if (ret != PhatState_OK) return ret;
 	}
-	ret = Phat_PutDirItem(dir_info, &diritem);
-	if (ret != PhatState_OK) return ret;
 
 	Phat_CloseDir(dir_info);
 	memset(file_info, 0, sizeof * file_info);
@@ -2404,6 +2419,7 @@ PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path)
 
 	// Check parameters
 	if (!phat || !path) return PhatState_InvalidParameter;
+	if (!phat->write_enable) return PhatState_ReadOnly;
 
 	Phat_OpenRootDir(phat, &dir_info);
 
@@ -2451,6 +2467,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 
 	// Check parameters
 	if (!phat || !path) return PhatState_InvalidParameter;
+	if (!phat->write_enable) return PhatState_ReadOnly;
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
@@ -2514,16 +2531,12 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 
 	// Check parameters
 	if (!phat || !path) return PhatState_InvalidParameter;
+	if (!phat->write_enable) return PhatState_ReadOnly;
 
 	Phat_OpenRootDir(phat, &dir_info);
 	ret = Phat_FindItem(phat, path, &dir_info, NULL);
 	if (ret != PhatState_OK) return ret;
 
-	Phat_PathToName(path, phat->filename_buffer);
-	name_len = Phat_Wcslen(phat->filename_buffer);
-
-	ret = Phat_FindItem(phat, phat->filename_buffer, &dir_info, NULL);
-	if (ret != PhatState_OK) goto FailExit;
 	last_entry = dir_info.cur_diritem;
 	ret = Phat_FindFirstLFNEntry(&dir_info);
 	if (ret != PhatState_OK) goto FailExit;
@@ -2565,6 +2578,7 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name)
 
 	// Check parameters
 	if (!phat || !path || !new_name) return PhatState_InvalidParameter;
+	if (!phat->write_enable) return PhatState_ReadOnly;
 
 	// Ensure the new name is valid
 	if (!Phat_IsValidFilename(new_name)) return PhatState_BadFileName;
@@ -2671,6 +2685,7 @@ PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath)
 
 	// Check parameters
 	if (!phat || !oldpath || !newpath) return PhatState_InvalidParameter;
+	if (!phat->write_enable) return PhatState_ReadOnly;
 
 	// Ensure the target directory is valid
 	ret = Phat_OpenDir(phat, newpath, &dir_info2);

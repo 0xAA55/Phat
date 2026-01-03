@@ -94,6 +94,7 @@ int main(int argc, char**argv)
 		fprintf(stderr, "Could not open the file for read: %s\n", Phat_StateToString(res));
 	}
 
+	V_(Phat_Move(&phat, L"TestPhat", L"TestPhat/MiddleDir"));
 	V_(Phat_Move(&phat, L"TestPhat/MiddleDir", L""));
 	V_(Phat_Rename(&phat, L"MiddleDir", L"MovedDir"));
 

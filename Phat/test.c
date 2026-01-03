@@ -63,6 +63,8 @@ int main(int argc, char**argv)
 	V_(Phat_WriteFile(&file_info, data_to_write, sizeof data_to_write, NULL));
 	V_(Phat_CloseFile(&file_info));
 
+	V_(Phat_Rename(&phat, L"TestPhat/Deeper", L"MiddleDir"));
+
 	printf("==== Files in `TestPhat` directory ====\n");
 	V_(Phat_OpenDir(&phat, L"TestPhat", &dir_info));
 	for (;;)
@@ -76,7 +78,7 @@ int main(int argc, char**argv)
 	}
 	Phat_CloseDir(&dir_info);
 
-	V_(Phat_OpenFile(&phat, L"TestPhat/Deeper/The Biography of John Wok.txt", 1, &file_info));
+	V_(Phat_OpenFile(&phat, L"TestPhat/MiddleDir/The Biography of John Wok.txt", 1, &file_info));
 	Phat_GetFileSize(&file_info, &file_size);
 	file_buf = calloc(file_size + 1, 1);
 	if (!file_buf) goto FailExit;

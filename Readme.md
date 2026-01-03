@@ -4,10 +4,24 @@
 
 Phat is a FAT filesystem API designed for embedded systems and cross-platform development.
 
-* No dynamic memory allocation is used.
+* Basic implementation for FAT12/16/32.
+	* Iterate through directory
+	* Open file(with creation or readonly)
+	* Read file
+	* Write file
+	* Seek file
+	* Delete file
+	* Create directory
+	* Remove directory
+	* Rename
+	* Move
+* Debugging on Windows by accessing a virtual drive.
+* Support for multiple partitions.
+* No dynamic memory allocation is used (except the Windows debug code).
 * Filenames and directories are encoded in UTF-16.
 * The default code page is 437 (OEM United States).
 * Includes an LRU (Least Recently Used) sector cache.
+* No limitations on the length of any pathes (Only limits the filename/dirname length <= 255)
 
 ## Usage
 
@@ -25,11 +39,11 @@ PhatBool_t BSP_WriteSector(void *buffer, LBA_t LBA, size_t num_blocks, void *use
 
 A default implementation is provided for the STM32H750 microcontroller to read/write via SDMMC1 when compiling with GCC or ARMCC.
 
-If `_WIN32` is defined, the default implementation uses `CreateFileW()` to open `\\.\PhysicalDrive3`. This means the fourth disk drive in your Windows system will be used for debugging. Be cautious when running the code on Windows, as it will access a physical drive.
+If `_WIN32` is defined, the default implementation uses `CreateFileW()` to open `test.vhd`. The virtual hard disk should be created by yourself, after created, the test code should be able to run.
 
-All you need is `BSP_phat.c`, `BSP_phat.h`, `phat.c`, `phat.h`.
+All you need is `BSP_phat.c`, `BSP_phat.h`, `phat.c`, `phat.h`. Add these files into your project.
 
-## Example: Iterate through a directory
+## Example
 
 ```C
 #include <stdio.h>
@@ -102,17 +116,3 @@ FailExit:
 	return 0;
 }
 ```
-
-## Currently Supported
-
-* Basic implementation for FAT12/16/32.
-	* Iterate through directory
-	* Open file(with creation or readonly)
-	* Read file
-	* Write file
-	* Seek file
-	* Delete file
-	* Create directory
-	* Remove directory
-* Debugging on Windows by accessing a virtual drive.
-* Support for multiple partitions.

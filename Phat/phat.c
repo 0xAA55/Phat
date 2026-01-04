@@ -589,8 +589,8 @@ static PhatBool_t Phat_LBA_to_CHS(LBA_t LBA, Phat_CHS_p chs)
 
 static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting_LBA, LBA_t *p_size_in_sectors)
 {
-	LBA_t starting_LBA_from_CHS = Phat_CHS_to_LBA(entry->starting_chs.head, entry->starting_chs.sector, entry->starting_chs.cylinder);
-	LBA_t ending_LBA_from_CHS = Phat_CHS_to_LBA(entry->ending_chs.head, entry->ending_chs.sector, entry->ending_chs.cylinder);
+	LBA_t starting_LBA_from_CHS = Phat_CHS_to_LBA(&entry->starting_chs);
+	LBA_t ending_LBA_from_CHS = Phat_CHS_to_LBA(&entry->ending_chs);
 	LBA_t size_in_sectors_from_CHS = ending_LBA_from_CHS - starting_LBA_from_CHS;
 	if (entry->starting_LBA != 0 && entry->size_in_sectors != 0)
 	{

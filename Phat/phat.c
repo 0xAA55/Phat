@@ -985,7 +985,7 @@ static PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_t *read_ou
 }
 
 // Write FAT table by `cluster` starting from 0
-static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write)
+static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write, PhatBool_t flush)
 {
 	PhatState ret = PhatState_OK;
 	int half_cluster = 0;
@@ -1043,6 +1043,7 @@ static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write)
 			break;
 		}
 		Phat_SetCachedSectorModified(cached_sector);
+		if (flush) Phat_WriteBackCachedSector(phat, cached_sector);
 		if (!phat->FATs_are_same) break;
 	}
 	return PhatState_OK;
@@ -1058,7 +1059,7 @@ static PhatState Phat_UnlinkCluster(Phat_p phat, Cluster_t cluster)
 		if (cluster < phat->next_free_cluster) phat->next_free_cluster = cluster;
 		ret = Phat_ReadFAT(phat, cluster, &next_sector);
 		if (ret != PhatState_OK) return ret;
-		ret = Phat_WriteFAT(phat, cluster, 0);
+		ret = Phat_WriteFAT(phat, cluster, 0, 0);
 		if (ret != PhatState_OK) return ret;
 		if (next_sector >= end_of_chain) break;
 		if (next_sector < 2 || next_sector > phat->max_valid_cluster) return PhatState_FATError;
@@ -1078,7 +1079,7 @@ static PhatState Phat_AllocateCluster(Phat_p phat, Cluster_t *allocated_cluster)
 		ret = Phat_ReadFAT(phat, free_cluster, &value);
 		if (ret == PhatState_OK && value == 0)
 		{
-			ret = Phat_WriteFAT(phat, free_cluster, phat->end_of_cluster_chain);
+			ret = Phat_WriteFAT(phat, free_cluster, phat->end_of_cluster_chain, 0);
 			if (ret != PhatState_OK) return ret;
 			if (phat->has_FSInfo)
 			{
@@ -1097,7 +1098,7 @@ static PhatState Phat_AllocateCluster(Phat_p phat, Cluster_t *allocated_cluster)
 	}
 	ret = Phat_SeekForFreeCluster(phat, &free_cluster);
 	if (ret != PhatState_OK) return ret;
-	ret = Phat_WriteFAT(phat, free_cluster, phat->end_of_cluster_chain);
+	ret = Phat_WriteFAT(phat, free_cluster, phat->end_of_cluster_chain, 0);
 	if (ret != PhatState_OK) return ret;
 	*allocated_cluster = free_cluster;
 	if (phat->has_FSInfo)
@@ -1228,7 +1229,7 @@ static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatB
 			next_cluster = dir_info->dir_current_cluster + 1;
 			ret = Phat_AllocateCluster(phat, &next_cluster);
 			if (ret != PhatState_OK) return ret;
-			ret = Phat_WriteFAT(phat, dir_info->dir_current_cluster, next_cluster);
+			ret = Phat_WriteFAT(phat, dir_info->dir_current_cluster, next_cluster, 0);
 			if (ret != PhatState_OK) return ret;
 			dir_info->dir_current_cluster = next_cluster;
 			ret = Phat_WipeCluster(phat, next_cluster);
@@ -2162,7 +2163,7 @@ static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info, Phat
 			next_cluster = file_info->cur_cluster + 1;
 			ret = Phat_AllocateCluster(phat, &next_cluster);
 			if (ret != PhatState_OK) return ret;
-			ret = Phat_WriteFAT(phat, file_info->cur_cluster, next_cluster);
+			ret = Phat_WriteFAT(phat, file_info->cur_cluster, next_cluster, 0);
 			if (ret != PhatState_OK) return ret;
 			file_info->cur_cluster = next_cluster;
 			ret = Phat_WipeCluster(phat, next_cluster);

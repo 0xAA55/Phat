@@ -132,7 +132,7 @@ typedef struct Phat_LFN_Entry_s
 #define CI_BASENAME_IS_LOWER 0x10
 
 static PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_t *read_out);
-static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write);
+static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write, PhatBool_t flush);
 
 static WChar_t Cp437_UpperPart[] =
 {

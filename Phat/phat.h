@@ -42,6 +42,7 @@
 
 typedef uint16_t WChar_t, *WChar_p;
 typedef uint32_t Cluster_t, *Cluster_p;
+typedef int32_t SCluster_t, *SCluster_p;
 typedef Cluster_t FileSize_t, *FileSize_p;
 
 typedef struct Phat_SectorCache_s

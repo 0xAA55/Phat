@@ -130,6 +130,8 @@ typedef struct Phat_LFN_Entry_s
 }Phat_LFN_Entry_t, *Phat_LFN_Entry_p;
 #pragma pack(pop)
 
+#define MAX_CHS_LBA (1023 * 255 * 63)
+
 #define ATTRIB_LFN (ATTRIB_READ_ONLY | ATTRIB_HIDDEN | ATTRIB_SYSTEM | ATTRIB_VOLUME_ID)
 #define CI_EXTENSION_IS_LOWER 0x08
 #define CI_BASENAME_IS_LOWER 0x10
@@ -564,7 +566,7 @@ static PhatBool_t Phat_LBA_to_CHS(LBA_t LBA, Phat_CHS_p chs)
 	const uint16_t heads_per_cylinder = 255;
 	const uint8_t sectors_per_track = 63;
 
-	if (LBA >= 1024 * heads_per_cylinder * sectors_per_track)
+	if (LBA > MAX_CHS_LBA)
 	{
 		// Overflowed, set to maximum
 		chs->head = 0xFE;

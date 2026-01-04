@@ -247,6 +247,18 @@ __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, voi
 	return 1;
 }
 
+__weak LBA_t BSP_GetDeviceCapacity(void *userdata)
+{
+	LARGE_INTEGER file_size;
+
+	if (!GetFileSizeEx(hDevice, &file_size))
+	{
+		ShowLastError("GetFileSizeEx()");
+		return 0;
+	}
+	return (LBA_t)(file_size.QuadPart / 512);
+}
+
 __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
 	DWORD num_wrote = 0;
@@ -310,6 +322,13 @@ __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_bloc
 	if (HAL_SD_WriteBlocks(&hsd1, (const uint8_t *)buffer, LBA, num_blocks, SDMMC_SWDATATIMEOUT) == HAL_OK) return 1;
 	return 0;
 }
+
+__weak LBA_t BSP_GetDeviceCapacity(void *userdata)
+{
+	HAL_SD_CardInfoTypeDef info;
+	if (HAL_SD_GetCardInfo(&hsd1, &info) != HAL_OK) return 0;
+	return info.BlockNbr;
+}
 #endif
 
 __weak Phat_Disk_Driver_t Phat_InitDriver(void *userdata)
@@ -320,6 +339,7 @@ __weak Phat_Disk_Driver_t Phat_InitDriver(void *userdata)
 	ret.fn_read_sector = BSP_ReadSector;
 	ret.fn_write_sector = BSP_WriteSector;
 	ret.fn_close_device = BSP_CloseDevice;
+	ret.device_capacity_in_sectors = 0;
 	return ret;
 }
 
@@ -330,7 +350,17 @@ __weak void Phat_DeInitDriver(Phat_Disk_Driver_p driver)
 
 __weak PhatBool_t Phat_OpenDevice(Phat_Disk_Driver_p driver)
 {
-	return driver->fn_open_device(driver->userdata);
+	if (driver->fn_open_device(driver->userdata))
+	{
+		driver->device_capacity_in_sectors = BSP_GetDeviceCapacity(driver->userdata);
+		if (!driver->device_capacity_in_sectors)
+		{
+			driver->fn_close_device(driver->userdata);
+			return 0;
+		}
+		return 1;
+	}
+	return 0;
 }
 
 __weak PhatBool_t Phat_CloseDevice(Phat_Disk_Driver_p driver)

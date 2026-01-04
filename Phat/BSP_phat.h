@@ -34,6 +34,7 @@ typedef struct Phat_Disk_Driver_s
 	FnWriteSector fn_write_sector;
 	FnCloseDevice fn_close_device;
 	PhatBool_t device_opended;
+	LBA_t device_capacity_in_sectors;
 }Phat_Disk_Driver_t, *Phat_Disk_Driver_p;
 
 Phat_Disk_Driver_t Phat_InitDriver(void *userdata);

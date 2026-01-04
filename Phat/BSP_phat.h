@@ -4,11 +4,12 @@
 #include<stdint.h>
 
 #ifdef PHAT_BIGLBA
-typedef uint64_t LBA_t;
+typedef uint64_t LBA_t, *LBA_p;
+typedef int64_t SLBA_t, *SLBA_p;
 #else
-typedef uint32_t LBA_t;
+typedef uint32_t LBA_t, *LBA_p;
+typedef int32_t SLBA_t, *SLBA_p;
 #endif
-typedef LBA_t *LBA_p;
 
 #ifndef SDMMC_SWDATATIMEOUT
 #define SDMMC_SWDATATIMEOUT 200

@@ -8,16 +8,19 @@
 #endif
 
 #pragma pack(push, 1)
+typedef struct Phat_CHS_s
+{
+	uint8_t head;
+	uint8_t sector;
+	uint8_t cylinder;
+}Phat_CHS_t, *Phat_CHS_p;
+
 typedef struct Phat_MBR_Entry_s
 {
 	uint8_t boot_indicator;
-	uint8_t starting_head;
-	uint8_t starting_sector;
-	uint8_t starting_cylinder;
+	Phat_CHS_t starting_chs;
 	uint8_t partition_type;
-	uint8_t ending_head;
-	uint8_t ending_sector;
-	uint8_t ending_cylinder;
+	Phat_CHS_t ending_chs;
 	uint32_t starting_LBA;
 	uint32_t size_in_sectors;
 }Phat_MBR_Entry_t, *Phat_MBR_Entry_p;
@@ -548,19 +551,45 @@ static PhatState Phat_WriteSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t nu
 	return PhatState_OK;
 }
 
-static LBA_t Phat_CHS_to_LBA(uint8_t head, uint8_t sector, uint8_t cylinder)
+static LBA_t Phat_CHS_to_LBA(Phat_CHS_p chs)
 {
-	uint8_t actual_sector = sector & 0x1F;
-	uint16_t actual_cylinder = ((uint16_t)(sector & 0xC0) << 2) | cylinder;
+	uint8_t actual_sector = chs->sector & 0x1F;
+	uint16_t actual_cylinder = ((uint16_t)(chs->sector & 0xC0) << 2) | chs->cylinder;
 	if (actual_sector < 1) return 0;
-	return ((LBA_t)actual_cylinder * 255 + head) * 63 + (actual_sector - 1);
+	return ((LBA_t)actual_cylinder * 255 + chs->head) * 63 + (actual_sector - 1);
+}
+
+static PhatBool_t Phat_LBA_to_CHS(LBA_t LBA, Phat_CHS_p chs)
+{
+	const uint16_t heads_per_cylinder = 255;
+	const uint8_t sectors_per_track = 63;
+
+	if (LBA >= 1024 * heads_per_cylinder * sectors_per_track)
+	{
+		// Overflowed, set to maximum
+		chs->head = 0xFE;
+		chs->sector = 0xFF;
+		chs->cylinder = 0xFF;
+		return 0;
+	}
+	else
+	{
+		uint16_t cylinder = LBA / (heads_per_cylinder * sectors_per_track);
+		uint8_t head = (LBA / sectors_per_track) % heads_per_cylinder;
+		uint8_t sector = (LBA % sectors_per_track) + 1;
+
+		chs->head = head;
+		chs->sector = (uint8_t)(sector | ((cylinder >> 2) & 0xC0));
+		chs->cylinder = (uint8_t)(cylinder & 0xFF);
+		return 1;
+	}
 }
 
 static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting_LBA, LBA_t *p_size_in_sectors)
 {
-	LBA_t starting_LBA_from_CHS = Phat_CHS_to_LBA(entry->starting_head, entry->starting_sector, entry->starting_cylinder);
-	LBA_t ending_LBA_from_CHS = Phat_CHS_to_LBA(entry->ending_head, entry->ending_sector, entry->ending_cylinder);
-	LBA_t size_in_sectors_from_CHS = ending_LBA_from_CHS - starting_LBA_from_CHS + 1;
+	LBA_t starting_LBA_from_CHS = Phat_CHS_to_LBA(entry->starting_chs.head, entry->starting_chs.sector, entry->starting_chs.cylinder);
+	LBA_t ending_LBA_from_CHS = Phat_CHS_to_LBA(entry->ending_chs.head, entry->ending_chs.sector, entry->ending_chs.cylinder);
+	LBA_t size_in_sectors_from_CHS = ending_LBA_from_CHS - starting_LBA_from_CHS;
 	if (entry->starting_LBA != 0 && entry->size_in_sectors != 0)
 	{
 		*p_starting_LBA = entry->starting_LBA;

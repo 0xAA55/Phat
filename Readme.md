@@ -1,5 +1,9 @@
 # Phat: FAT filesystem API
 
+## 语言 Language
+
+[简体中文](Readme-CN.md) | Chinglish
+
 ## Overview
 
 Phat is a FAT filesystem API designed for embedded systems and cross-platform development.
@@ -15,7 +19,9 @@ Phat is a FAT filesystem API designed for embedded systems and cross-platform de
 	* Remove directory
 	* Rename
 	* Move
-	* MakeFS
+	* Initialize a disk to MBR
+	* Create partitions in a MBR disk
+	* MakeFS: Format a partition to FAT12/16/32
 * Debugging on Windows by accessing a virtual drive.
 * Support for multiple partitions.
 * No dynamic memory allocation is used (except the Windows debug code).
@@ -36,11 +42,12 @@ PhatBool_t BSP_OpenDevice(void *userdata);
 PhatBool_t BSP_CloseDevice(void *userdata);
 PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
 PhatBool_t BSP_WriteSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
+LBA_t BSP_GetDeviceCapacity(void *userdata);
 ```
 
 A default implementation is provided for the STM32H750 microcontroller to read/write via SDMMC1 when compiling with GCC or ARMCC.
 
-If `_WIN32` is defined, the default implementation uses `CreateFileW()` to open `test.vhd`. The virtual hard disk should be created by yourself, after created, the test code should be able to run.
+If `_WIN32` is defined, the default implementation uses `CreateFileW()` to open `test.vhd`. The virtual hard disk will be automatically created. After the test code exits, it will be automatically mounted to the system, meaning you'll notice that an additional drive appears. You can check this drive to observe whether the file system is functioning properly.
 
 All you need is `BSP_phat.c`, `BSP_phat.h`, `phat.c`, `phat.h`. Add these files into your project.
 

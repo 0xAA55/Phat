@@ -165,6 +165,8 @@ typedef enum PhatState_e
 	PhatState_ReadOnly,
 	PhatState_NameTooLong,
 	PhatState_BadFileName,
+	PhatState_CannotMakeFS,
+	PhatState_FSIsSubOptimal,
 	PhatState_LastState,
 }PhatState;
 
@@ -174,6 +176,8 @@ typedef enum PhatState_e
 #define ATTRIB_VOLUME_ID 0x08
 #define ATTRIB_DIRECTORY 0x10
 #define ATTRIB_ARCHIVE 0x20
+
+const char *Phat_StateToString(PhatState s);
 
 PhatState Phat_Init(Phat_p phat);
 PhatState Phat_DeInit(Phat_p phat);
@@ -213,6 +217,5 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path);
 PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name);
 PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath);
 
-const char *Phat_StateToString(PhatState s);
 
 #endif

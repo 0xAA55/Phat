@@ -192,6 +192,8 @@ const char *Phat_StateToString(PhatState s)
 		"The file is opened in RO mode",
 		"The name is too long",
 		"The name contains invalid characters",
+		"Can not format the partition because parameters are insane",
+		"The current partition formatting approach is suboptimal, resulting in significant space wastage",
 	};
 	if (s >= PhatState_LastState) return "InvalidStateNumber";
 	else return strlist[s];

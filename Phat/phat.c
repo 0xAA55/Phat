@@ -662,7 +662,6 @@ static PhatState Phat_SeekForFreeCluster(Phat_p phat, Cluster_t *cluster_out)
 static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flush_immediately)
 {
 	PhatState ret;
-	Phat_SectorCache_p cached_sector;
 	Cluster_t clean_bit;
 	Cluster_t dirty_entry;
 
@@ -687,7 +686,6 @@ static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flu
 static PhatState Phat_CheckIsDirty(Phat_p phat, PhatBool_t *is_dirty)
 {
 	PhatState ret;
-	Phat_SectorCache_p cached_sector;
 	Cluster_t clean_bit;
 	Cluster_t dirty_entry;
 

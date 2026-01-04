@@ -3327,9 +3327,6 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 		ret = Phat_WipeCluster(phat, 2);
 		if (ret != PhatState_OK) return ret;
 
-		// End of the root dir cluster chain
-		ret = Phat_WriteFAT(phat, 2, phat->end_of_cluster_chain, 0);
-		if (ret != PhatState_OK) return ret;
 	}
 
 	// Initialize the FAT table
@@ -3351,6 +3348,7 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 		case 32:
 			*(uint32_t *)&cached_sector->data[0] = 0x0FFFFFF8;
 			*(uint32_t *)&cached_sector->data[4] = 0xFFFFFFFF;
+			*(uint32_t *)&cached_sector->data[8] = 0x0FFFFFF8;
 			break;
 		}
 

@@ -2459,6 +2459,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 	Phat_DirInfo_t dir_info;
 	PhatState ret;
 	size_t name_len;
+	Cluster_t dir_start_cluster;
 	Cluster_t parent_dir_start_cluster = 0;
 	Cluster_t first_entry = 0;
 	Cluster_t last_entry = 0;
@@ -2469,6 +2470,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 
 	ret = Phat_OpenDir(phat, path, &dir_info);
 	if (ret != PhatState_OK) return ret;
+	dir_start_cluster = dir_info.dir_start_cluster;
 	for (;;)
 	{
 		ret = Phat_NextDirItem(&dir_info);
@@ -2514,6 +2516,10 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 		if (ret != PhatState_OK) return ret;
 	}
 
+	// Mark the clusters of the directory as free clusters.
+	ret = Phat_UnlinkCluster(phat, dir_start_cluster);
+	if (ret != PhatState_OK) goto FailExit;
+
 FailExit:
 	Phat_CloseDir(&dir_info);
 	return ret;
@@ -2525,6 +2531,7 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 	Phat_DirInfo_t dir_info;
 	Cluster_t first_entry = 0;
 	Cluster_t last_entry = 0;
+	Cluster_t first_cluster;
 
 	// Check parameters
 	if (!phat || !path) return PhatState_InvalidParameter;
@@ -2533,6 +2540,8 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 	Phat_OpenRootDir(phat, &dir_info);
 	ret = Phat_FindItem(phat, path, &dir_info, NULL);
 	if (ret != PhatState_OK) return ret;
+
+	first_cluster = dir_info.first_cluster;
 
 	last_entry = dir_info.cur_diritem;
 	ret = Phat_FindFirstLFNEntry(&dir_info);
@@ -2549,6 +2558,10 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path)
 		ret = Phat_PutDirItem(&dir_info, &dir_item);
 		if (ret != PhatState_OK) return ret;
 	}
+
+	// Mark the clusters of the file as free clusters.
+	ret = Phat_UnlinkCluster(phat, first_cluster);
+	if (ret != PhatState_OK) goto FailExit;
 
 FailExit:
 	Phat_CloseDir(&dir_info);

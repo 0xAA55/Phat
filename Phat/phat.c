@@ -3268,12 +3268,12 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 		dbr->root_dir_entry_count = 0;
 		dbr->total_sectors_16 = partition_size_in_sectors <= 0xFFFF ? partition_size_in_sectors : 0;
 		dbr->media = media_type;
-		dbr->FAT_size_16 = FAT_size <= 0xFFFF ? FAT_size : 0;
+		dbr->FAT_size_16 = 0;
 		dbr->sectors_per_track = sectors_per_track;
 		dbr->num_heads = num_heads;
 		dbr->hidden_sectors = (uint32_t)partition_start_LBA;
 		dbr->total_sectors_32 = partition_size_in_sectors > 0xFFFF ? partition_size_in_sectors : 0;
-		dbr->FAT_size_32 = FAT_size > 0xFFFF ? FAT_size : 0;
+		dbr->FAT_size_32 = FAT_size;
 		dbr->FATs_are_different = 0;
 		dbr->version = 0;
 		dbr->root_dir_cluster = 2;

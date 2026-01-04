@@ -195,6 +195,12 @@ const char *Phat_StateToString(PhatState s)
 		"The name contains invalid characters",
 		"Can not format the partition because parameters are insane",
 		"The current partition formatting approach is suboptimal, resulting in significant space wastage",
+		"The disk is already initialized",
+		"No free partitions to allocate",
+		"The partition is too small for FAT FS",
+		"The first sector does NOT appear to be a MBR",
+		"The disk is using GPT, currently not supported",
+		"The partition overlaps an existing one",
 	};
 	if (s >= PhatState_LastState) return "InvalidStateNumber";
 	else return strlist[s];

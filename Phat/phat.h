@@ -167,6 +167,12 @@ typedef enum PhatState_e
 	PhatState_BadFileName,
 	PhatState_CannotMakeFS,
 	PhatState_FSIsSubOptimal,
+	PhatState_DiskAlreadyInitialized,
+	PhatState_NoFreePartitions,
+	PhatState_PartitionTooSmall,
+	PhatState_NoMBR,
+	PhatState_IsGPT,
+	PhatState_PartitionOverlapped,
 	PhatState_LastState,
 }PhatState;
 

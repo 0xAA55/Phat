@@ -84,7 +84,7 @@ typedef struct Phat_s
 	LBA_t root_dir_cluster;
 	LBA_t data_start_LBA;
 	LBA_t root_dir_start_LBA;
-	uint16_t root_entry_count;
+	uint16_t root_dir_entry_count;
 	PhatBool_t FATs_are_same;
 	PhatBool_t is_dirty;
 	PhatBool_t write_enable;

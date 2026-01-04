@@ -817,7 +817,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 		phat->max_valid_cluster = phat->num_FAT_entries + 1;
 
 		// Read FSInfo sector
-		ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 1, &cached_sector);
+		ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + dbr_32->FS_info_sector, &cached_sector);
 		if (ret != PhatState_OK) return ret;
 		fsi = (Phat_FSInfo_p)cached_sector->data;
 		if (fsi->lead_signature == 0x41615252 && fsi->struct_signature == 0x61417272 && fsi->trail_signature == 0xAA55)

@@ -3122,10 +3122,10 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 		num_heads = 0xFF;
 	}
 
-	// Choose the smallest possible `sectors_per_cluster` that still covers the entire partition.
 	switch (FAT_bits)
 	{
 	case 12:
+		// Choose the smallest possible `sectors_per_cluster` that still covers the entire partition.
 		if (partition_size_in_sectors >= 128 * max_cluster) return PhatState_CannotMakeFS;
 		else if (partition_size_in_sectors > 64 * max_cluster) sectors_per_cluster = 128;
 		else if (partition_size_in_sectors > 32 * max_cluster) sectors_per_cluster = 64;
@@ -3137,8 +3137,9 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 		else sectors_per_cluster = 1;
 		break;
 	case 16:
+		// Choose `sectors_per_cluster` based on the partition size
 		sectors_per_cluster = 1;
-		for (uint64_t i = 1 << 32; i < partition_size_in_sectors; i <<= 1)
+		for (uint64_t i = 64 * 1024 * 1024 / 512; i < partition_size_in_sectors; i <<= 1)
 		{
 			sectors_per_cluster <<= 1;
 			if (sectors_per_cluster == 128) break;
@@ -3146,12 +3147,20 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 		if (partition_size_in_sectors >= sectors_per_cluster * max_cluster) return PhatState_CannotMakeFS;
 		break;
 	case 32:
-		if (partition_size_in_sectors >= (uint64_t)128 * max_cluster) return PhatState_CannotMakeFS;
-		else if (partition_size_in_sectors > (uint64_t)64 * max_cluster) sectors_per_cluster = 128;
-		else if (partition_size_in_sectors > (uint64_t)32 * max_cluster) sectors_per_cluster = 64;
-		else if (partition_size_in_sectors > 16 * max_cluster) sectors_per_cluster = 32;
-		else if (partition_size_in_sectors > 8 * max_cluster) sectors_per_cluster = 16;
-		else sectors_per_cluster = 8;
+		// Choose `sectors_per_cluster` based on the partition size, prefer 8
+		sectors_per_cluster = 8;
+		if (partition_size_in_sectors >= 1024 * 1024 * 1024 / 512)
+		{
+			if (partition_size_in_sectors >= (uint64_t)128 * max_cluster) return PhatState_CannotMakeFS;
+			else if (partition_size_in_sectors > (uint64_t)64 * max_cluster) sectors_per_cluster = 128;
+			else if (partition_size_in_sectors > (uint64_t)32 * max_cluster) sectors_per_cluster = 64;
+			else if (partition_size_in_sectors > 16 * max_cluster) sectors_per_cluster = 32;
+			else if (partition_size_in_sectors > 8 * max_cluster) sectors_per_cluster = 16;
+			else sectors_per_cluster = 8;
+		}
+		if (partition_size_in_sectors <= 4 * 1024 / 512) sectors_per_cluster = 4;
+		if (partition_size_in_sectors <= 2 * 1024 / 512) sectors_per_cluster = 2;
+		if (partition_size_in_sectors <= 1 * 1024 / 512) sectors_per_cluster = 1;
 	}
 
 	partition_size_in_clusters = partition_size_in_sectors / sectors_per_cluster;

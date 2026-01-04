@@ -224,6 +224,6 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path);
 PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name);
 PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath);
 
+PhatState Phat_InitializeMBR(Phat_p phat, PhatBool_t force, PhatBool_t flush);
 PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, LBA_t partition_start_LBA, LBA_t partition_size_in_sectors, int FAT_bits, uint16_t root_dir_entry_count, uint32_t volume_ID, const char *volume_lable);
-
 #endif

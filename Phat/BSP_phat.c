@@ -13,16 +13,42 @@ __weak PhatBool_t BSP_WriteSector(void *buffer, LBA_t LBA, size_t num_blocks, vo
 
 #ifdef _WIN32
 #define INITGUID
+#include <time.h>
 #include <stdio.h>
 #include <assert.h>
 #include <Windows.h>
 #include <virtdisk.h>
 #pragma comment(lib, "advapi32.lib")
 #pragma comment(lib, "VirtDisk.lib")
+#pragma comment(lib, "Rpcrt4.lib")
 
 static const WCHAR* BSP_DeviceFilePath = L"test.vhd";
 
 static HANDLE hDevice = INVALID_HANDLE_VALUE;
+
+#pragma pack(push, 1)
+typedef struct VHD_Footer_s
+{
+	char cookie[8];
+	uint32_t features;
+	uint32_t format_version;
+	uint64_t data_offset;
+	uint32_t timestamp;
+	uint32_t creator_app;
+	uint32_t creator_version;
+	uint32_t creator_host_os;
+	uint64_t original_size;
+	uint64_t current_size;
+	uint16_t cylinders;
+	uint8_t heads;
+	uint8_t sectors;
+	uint32_t disk_type;
+	uint32_t checksum;
+	UUID unique_id;
+	uint8_t saved_state;
+	uint8_t reserved[427];
+}VHD_Footer_t, *VHD_Footer_p;
+#pragma pack(pop)
 
 static void ShowError(DWORD error_code, const char *performing)
 {
@@ -106,9 +132,55 @@ ErrRet:
 	return 0;
 }
 
+static uint16_t BSwap16(uint16_t val)
+{
+	union {
+		uint8_t u8s[2];
+		uint16_t u16;
+	}u1, u2;
+
+	u1.u16 = val;
+	u2.u8s[0] = u1.u8s[1];
+	u2.u8s[1] = u1.u8s[0];
+	return u2.u16 ;
+}
+
+static uint32_t BSwap32(uint32_t val)
+{
+	union {
+		uint16_t u16s[2];
+		uint32_t u32;
+	}u1, u2;
+
+	u1.u32 = val;
+	u2.u16s[0] = BSwap16(u1.u16s[1]);
+	u2.u16s[1] = BSwap16(u1.u16s[0]);
+	return u2.u32;
+}
+
+static uint64_t BSwap64(uint64_t val)
+{
+	union {
+		uint32_t u32s[2];
+		uint64_t u64;
+	}u1, u2;
+
+	u1.u64 = val;
+	u2.u32s[0] = BSwap32(u1.u32s[1]);
+	u2.u32s[1] = BSwap32(u1.u32s[0]);
+	return u2.u64;
+}
+
 static PhatBool_t CreateVHD(uint64_t size)
 {
+	VHD_Footer_t footer = { 0 };
 	LARGE_INTEGER li;
+	uint64_t total_sectors = size / 512;
+	uint64_t cylinder_times_heads;
+	uint16_t cylinders;
+	uint32_t checksum = 0;
+	uint8_t *footer_ptr = (uint8_t*)&footer;
+	uint32_t written = 0;
 
 	hDevice = CreateFileW(BSP_DeviceFilePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, 0, NULL);
 	if (hDevice == INVALID_HANDLE_VALUE)
@@ -124,9 +196,70 @@ static PhatBool_t CreateVHD(uint64_t size)
 		goto FailExit;
 	}
 
-	if (!SetEndOfFile(hDevice))
+	if (total_sectors >= 65535 * 16 * 63)
 	{
-		ShowLastError("Extending the VHD file to the target size by using `SetEndOfFile()`");
+		footer.sectors = 255;
+		footer.heads = 16;
+		cylinder_times_heads = total_sectors / footer.sectors;
+		total_sectors = 65535 * 16 * 255;
+	}
+	else
+	{
+		footer.sectors = 17;
+		cylinder_times_heads = total_sectors / footer.sectors;
+
+		footer.heads = (uint8_t)((cylinder_times_heads + 1023) / 1024);
+
+		if (footer.heads < 4)
+		{
+			footer.heads = 4;
+		}
+		if (cylinder_times_heads >= (footer.heads * 1024) || footer.heads > 16)
+		{
+			footer.sectors = 31;
+			footer.heads = 16;
+			cylinder_times_heads = total_sectors / footer.sectors;
+		}
+		if (cylinder_times_heads >= (footer.heads * 1024))
+		{
+			footer.sectors = 63;
+			footer.heads = 16;
+			cylinder_times_heads = total_sectors / footer.sectors;
+		}
+	}
+	cylinders = (uint16_t)(cylinder_times_heads / footer.heads);
+
+	memcpy(footer.cookie, "conectix", 8);
+	footer.features = BSwap32(2);
+	footer.format_version = BSwap32(0x00010000);
+	footer.data_offset = -1;
+	footer.timestamp = BSwap32((uint32_t)(time(NULL) - 946684800));
+	footer.creator_app = 0x74616850; // 'Phat'
+	footer.creator_version = BSwap32(0x000A0000);
+	footer.creator_host_os = BSwap32(0x5769326B);
+	footer.original_size = BSwap64(size);
+	footer.current_size = BSwap64(size);
+	footer.cylinders = BSwap16(cylinders);
+	footer.heads = 16;
+	footer.sectors = 63;
+	footer.disk_type = BSwap32(2);
+	UuidCreateSequential(&footer.unique_id);
+	footer.saved_state = 0;
+
+	for (size_t i = 0; i < 512; i++)
+	{
+		checksum += footer_ptr[i];
+	}
+	footer.checksum = BSwap32(~checksum);
+
+	if (!WriteFile(hDevice, &footer, 512, &written, NULL))
+	{
+		ShowLastError("Extending the VHD file to the target size by using `WriteFile()` to write the footer");
+		goto FailExit;
+	}
+	if (written != 512)
+	{
+		fprintf(stderr, "`WriteFile()` write for 512 bytes, but %d byte(s) were actually written.\n", written);
 		goto FailExit;
 	}
 

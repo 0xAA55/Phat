@@ -2873,6 +2873,58 @@ PhatState Phat_InitializeMBR(Phat_p phat, PhatBool_t force, PhatBool_t flush)
 	return PhatState_OK;
 }
 
+PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partition_size_in_sectors, PhatBool_t bootable, PhatBool_t flush)
+{
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+	Phat_MBR_p mbr;
+	LBA_t partition_end;
+	int free_item = -1;
+	Phat_MBR_Entry_p entry;
+
+	if (!partition_start || !partition_size_in_sectors) return PhatState_InvalidParameter;
+	partition_end = partition_start + partition_size_in_sectors;
+
+	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	mbr = (Phat_MBR_p)&cached_sector->data;
+	if (!Phat_IsSectorMBR(mbr)) return PhatState_NoMBR;
+
+	for (int i = 0; i < 4; i++)
+	{
+		entry = &mbr->partition_entries[i];
+		LBA_t par_start;
+		LBA_t par_size;
+		if (Phat_GetMBREntryInfo(entry, &par_start, &par_size) && par_start && par_size)
+		{
+			LBA_t par_end = par_start + par_size;
+			if (!(partition_end <= par_start || par_end <= partition_start)) return PhatState_PartitionOverlapped;
+		}
+		else if (free_item < 0)
+		{
+			free_item = i;
+		}
+	}
+
+	if (free_item < 0) return PhatState_NoFreePartitions;
+	entry = &mbr->partition_entries[free_item];
+
+	entry->boot_indicator = bootable ? 0x80 : 0x00;
+	Phat_LBA_to_CHS(partition_start, &entry->starting_chs);
+	entry->partition_type = 0;
+	Phat_LBA_to_CHS(partition_end, &entry->ending_chs);
+	entry->starting_LBA = partition_start;
+	entry->size_in_sectors = partition_size_in_sectors;
+	Phat_SetCachedSectorModified(cached_sector);
+	if (flush)
+	{
+		ret = Phat_WriteBackCachedSector(phat, cached_sector);
+		if (ret != PhatState_OK) return ret;
+	}
+	return PhatState_OK;
+}
+
 PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, LBA_t partition_start_LBA, LBA_t partition_size_in_sectors, int FAT_bits, uint16_t root_dir_entry_count, uint32_t volume_ID, const char *volume_lable)
 {
 	uint8_t num_FATs;

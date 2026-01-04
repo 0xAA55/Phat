@@ -2096,10 +2096,9 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 
 	// Check parameters
 	if (!phat || !path || !file_info) return PhatState_InvalidParameter;
-
+	file_info->phat = phat;
 	if (!readonly && !phat->write_enable) return PhatState_ReadOnly;
 
-	file_info->phat = phat;
 	dir_info = &file_info->file_item;
 	Phat_OpenRootDir(phat, dir_info);
 

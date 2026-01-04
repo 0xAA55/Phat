@@ -131,6 +131,8 @@ typedef struct Phat_LFN_Entry_s
 #define CI_EXTENSION_IS_LOWER 0x08
 #define CI_BASENAME_IS_LOWER 0x10
 
+static const uint8_t empty_sector[512] = { 0 };
+
 static PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_t *read_out);
 static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write, PhatBool_t flush);
 
@@ -900,7 +902,6 @@ void Phat_SetCurDateTime(Phat_p phat, const Phat_Date_p cur_date, const Phat_Tim
 static PhatState Phat_WipeCluster(Phat_p phat, Cluster_t cluster)
 {
 	PhatState ret;
-	static const uint8_t empty_sector[512] = { 0 };
 	LBA_t cluster_LBA = Phat_ClusterToLBA(phat, cluster) + phat->partition_start_LBA;
 	for (LBA_t i = 0; i < phat->sectors_per_cluster; i++)
 	{

@@ -106,6 +106,42 @@ ErrRet:
 	return 0;
 }
 
+static PhatBool_t CreateVHD(uint64_t size)
+{
+	LARGE_INTEGER li;
+
+	hDevice = CreateFileW(BSP_DeviceFilePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, 0, NULL);
+	if (hDevice == INVALID_HANDLE_VALUE)
+	{
+		ShowLastError("Create the VHD file as a disk image by using `CreateFileW()`");
+		goto FailExit;
+	}
+
+	li.QuadPart = size;
+	if (SetFilePointerEx(hDevice, li, NULL, FILE_BEGIN) == 0)
+	{
+		ShowLastError("Extending the VHD file to the target size by using `SetFilePointerEx()`");
+		goto FailExit;
+	}
+
+	if (!SetEndOfFile(hDevice))
+	{
+		ShowLastError("Extending the VHD file to the target size by using `SetEndOfFile()`");
+		goto FailExit;
+	}
+
+	CloseHandle(hDevice);
+	hDevice = INVALID_HANDLE_VALUE;
+	return 1;
+FailExit:
+	if (hDevice != INVALID_HANDLE_VALUE)
+	{
+		CloseHandle(hDevice);
+		hDevice = INVALID_HANDLE_VALUE;
+	}
+	return 0;
+}
+
 static PhatBool_t MountVHD()
 {
 	WCHAR vhd_path[4096];
@@ -113,8 +149,11 @@ static PhatBool_t MountVHD()
 
 	if (!VHDFileExists())
 	{
-		fprintf(stderr, "Please create a VHD file (%S), initialize to MBR, create a FAT32 partition, then quick format the partition.\n", BSP_DeviceFilePath);
-		return 0;
+		if (!CreateVHD(1024 * 1024 * 1024))
+		{
+			fprintf(stderr, "Please create a VHD file (%S), initialize to MBR, create a FAT32 partition, then quick format the partition.\n", BSP_DeviceFilePath);
+			return 0;
+		}
 	}
 
 	DWORD length = GetFullPathNameW(BSP_DeviceFilePath, buffer_len, vhd_path, NULL);
@@ -162,7 +201,19 @@ static PhatBool_t UnmountVHD()
 {
 	WCHAR vhd_path[4096];
 	const DWORD buffer_len = sizeof vhd_path / sizeof vhd_path[0];
-	DWORD length = GetFullPathNameW(BSP_DeviceFilePath, buffer_len, vhd_path, NULL);
+	DWORD length;
+
+	if (!VHDFileExists())
+	{
+		if (!CreateVHD(1024 * 1024 * 1024))
+		{
+			fprintf(stderr, "Please create a VHD file (%S), initialize to MBR, create a FAT32 partition, then quick format the partition.\n", BSP_DeviceFilePath);
+			return 0;
+		}
+		return 1;
+	}
+
+	length = GetFullPathNameW(BSP_DeviceFilePath, buffer_len, vhd_path, NULL);
 	if (length == 0)
 	{
 		ShowLastError("Get VHD absolute path");
@@ -209,7 +260,7 @@ __weak PhatBool_t BSP_OpenDevice(void *userdata)
 	hDevice = CreateFileW(BSP_DeviceFilePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 	if (hDevice == INVALID_HANDLE_VALUE)
 	{
-		ShowLastError("CreateFileW()");
+		ShowLastError("Open VHD file as a disk image by using `CreateFileW()`");
 		return 0;
 	}
 	return 1;
@@ -253,7 +304,7 @@ __weak LBA_t BSP_GetDeviceCapacity(void *userdata)
 
 	if (!GetFileSizeEx(hDevice, &file_size))
 	{
-		ShowLastError("GetFileSizeEx()");
+		ShowLastError("Get the VHD capacity by using `GetFileSizeEx()`");
 		return 0;
 	}
 	return (LBA_t)(file_size.QuadPart / 512);

@@ -18,14 +18,34 @@ extern const uint8_t data_to_write[4964];
 
 int main(int argc, char**argv)
 {
-	PhatState res = PhatState_OK;
+	PhatState res;
 	Phat_DirInfo_t dir_info = { 0 };
 	Phat_FileInfo_t file_info = { 0 };
 
 	system("chcp 65001");
 
 	V(Phat_Init(&phat));
-	V(Phat_Mount(&phat, 0, 1));
+
+	res = Phat_Mount(&phat, 0, 1);
+	if (res == PhatState_NoMBR || res == PhatState_FSNotFat)
+	{
+		res = Phat_InitializeMBR(&phat, 0, 0);
+		if (res == PhatState_OK || res == PhatState_DiskAlreadyInitialized)
+		{
+			V_(Phat_CreatePartition(&phat, 0x80, phat.driver.device_capacity_in_sectors - 80, 1, 0));
+			res = Phat_MakeFS_And_Mount(&phat, 0, 32, 0, 0xAABBCCDD, NULL, 0);
+			switch (res)
+			{
+			case PhatState_OK: break;
+			case PhatState_FSIsSubOptimal:
+				fprintf(stderr, "The formatted filesystem is suboptimal.\n");
+				break;
+			default: V(res);
+			}
+		}
+		else V(res);
+	}
+	else V(res);
 
 	printf("==== Root directory files ====\n");
 	V(Phat_OpenDir(&phat, L"", &dir_info));

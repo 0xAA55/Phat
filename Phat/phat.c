@@ -3109,6 +3109,7 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 	}
 
 	phat->FAT_bits = FAT_bits;
+	phat->write_enable = 1;
 
 	if (FAT_bits == 12 && partition_start_LBA == 0 && partition_size_in_sectors == 2880)
 	{

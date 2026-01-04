@@ -3327,15 +3327,35 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 
 	if (is_mbr)
 	{
+		Phat_MBR_Entry_p entry;
+		LBA_t partition_end = partition_start_LBA + partition_size_in_sectors;
+
 		ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
 		if (ret != PhatState_OK) return ret;
 
 		mbr = (Phat_MBR_p)&cached_sector->data;
-		switch (FAT_bits)
+		entry = &mbr->partition_entries[partition_index];
+
+		entry->size_in_sectors = partition_size_in_sectors;
+		Phat_LBA_to_CHS(partition_end, &entry->ending_chs);
+
+		if (partition_end <= MAX_CHS_LBA)
 		{
-		case 12: mbr->partition_entries[partition_index].partition_type = 0x01; break;
-		case 16: mbr->partition_entries[partition_index].partition_type = 0x0E; break;
-		case 32: mbr->partition_entries[partition_index].partition_type = 0x0C; break;
+			switch (FAT_bits)
+			{
+			case 12: entry->partition_type = 0x06; break;
+			case 16: entry->partition_type = 0x06; break;
+			case 32: entry->partition_type = 0x0B; break;
+			}
+		}
+		else
+		{
+			switch (FAT_bits)
+			{
+			case 12: entry->partition_type = 0x06; break;
+			case 16: entry->partition_type = 0x06; break;
+			case 32: entry->partition_type = 0x0C; break;
+			}
 		}
 		Phat_SetCachedSectorModified(cached_sector);
 	}

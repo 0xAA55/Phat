@@ -773,9 +773,13 @@ PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 		ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA, &cached_sector);
 		if (ret != PhatState_OK) return ret;
 	}
-	else if (partition_index != 0)
+	else if (Phat_IsSectorDBR((Phat_DBR_FAT32_p)cached_sector->data))
 	{
-		return PhatState_InvalidParameter;
+		if (partition_index != 0) return PhatState_InvalidParameter;
+	}
+	else
+	{
+		return PhatState_NoMBR;
 	}
 
 	phat->write_enable = write_enable;

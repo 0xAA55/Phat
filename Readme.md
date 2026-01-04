@@ -15,6 +15,7 @@ Phat is a FAT filesystem API designed for embedded systems and cross-platform de
 	* Remove directory
 	* Rename
 	* Move
+	* MakeFS
 * Debugging on Windows by accessing a virtual drive.
 * Support for multiple partitions.
 * No dynamic memory allocation is used (except the Windows debug code).

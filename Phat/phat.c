@@ -2779,3 +2779,383 @@ PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath)
 	}
 	return PhatState_OK;
 }
+
+PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, LBA_t partition_start_LBA, LBA_t partition_size_in_sectors, int FAT_bits, uint16_t root_dir_entry_count, uint32_t volume_ID, const char *volume_lable)
+{
+	uint8_t num_FATs;
+	uint8_t media_type;
+	uint8_t sectors_per_cluster;
+	uint16_t reserved_sector_count;
+	uint16_t sectors_per_track;
+	uint16_t num_heads;
+	uint16_t BIOS_drive_number;
+	uint32_t FAT_size;
+	Cluster_t max_cluster;
+	Cluster_t partition_size_in_clusters;
+	Cluster_t free_clusters;
+	LBA_t end_of_FAT_LBA;
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+	const uint8_t *boot_code;
+
+	if (partition_size_in_sectors >= 0xFFFFFFFF / 512) return PhatState_CannotMakeFS;
+	if (partition_start_LBA == 0 && partition_index != 0) return PhatState_InvalidParameter;
+
+	num_FATs = 2;
+	if (!volume_lable) volume_lable = "NO NAME";
+
+	switch (FAT_bits)
+	{
+	case 12:
+		max_cluster = 0xFF0;
+		if (!root_dir_entry_count) root_dir_entry_count = 224;
+		media_type = 0xF0;
+		BIOS_drive_number = 0x00;
+		break;
+	case 16:
+		max_cluster = 0xFFF0;
+		if (!root_dir_entry_count) root_dir_entry_count = 512;
+		media_type = 0xF8;
+		BIOS_drive_number = 0x80;
+		break;
+	case 32:
+		if (root_dir_entry_count) return PhatState_InvalidParameter;
+		max_cluster = 0x0FFFFFF0;
+		media_type = 0xF8;
+		BIOS_drive_number = 0x80;
+		break;
+	case 0:
+		if (partition_size_in_sectors >= 8 * 0xFFF0)
+		{
+			FAT_bits = 32;
+			max_cluster = 0x0FFFFFF0;
+			if (root_dir_entry_count) return PhatState_InvalidParameter;
+		}
+		else if (partition_size_in_sectors >= 8 * 0xFF0)
+		{
+			FAT_bits = 16;
+			max_cluster = 0xFFF0;
+			if (!root_dir_entry_count) root_dir_entry_count = 512;
+		}
+		else
+		{
+			FAT_bits = 12;
+			max_cluster = 0xFF0;
+			if (!root_dir_entry_count) root_dir_entry_count = 224;
+		}
+		break;
+	default:
+		return PhatState_InvalidParameter;
+	}
+
+	if (FAT_bits == 12 && partition_start_LBA == 0 && partition_size_in_sectors == 2880)
+	{
+		sectors_per_track = 0x0012;
+		num_heads = 0x02;
+	}
+	else
+	{
+		sectors_per_track = 0x003F;
+		num_heads = 0xFF;
+	}
+
+	// Choose the smallest possible `sectors_per_cluster` that still covers the entire partition.
+	if (partition_size_in_sectors >= (uint64_t)128 * max_cluster) return PhatState_CannotMakeFS;
+	else if (partition_size_in_sectors > (uint64_t)64 * max_cluster) sectors_per_cluster = 128;
+	else if (partition_size_in_sectors > (uint64_t)32 * max_cluster) sectors_per_cluster = 64;
+	else if (partition_size_in_sectors > 16 * max_cluster) sectors_per_cluster = 32;
+	else if (partition_size_in_sectors > 8 * max_cluster) sectors_per_cluster = 16;
+	else if (partition_size_in_sectors > 4 * max_cluster) sectors_per_cluster = 8;
+	else if (partition_size_in_sectors > 2 * max_cluster) sectors_per_cluster = 4;
+	else if (partition_size_in_sectors > 1 * max_cluster) sectors_per_cluster = 2;
+	else sectors_per_cluster = 1;
+
+	partition_size_in_clusters = partition_size_in_sectors / sectors_per_cluster;
+	partition_size_in_sectors = partition_size_in_clusters * sectors_per_cluster;
+
+	switch (FAT_bits)
+	{
+	case 12: FAT_size = (partition_size_in_clusters + (partition_size_in_clusters >> 1)) / 512; break;
+	case 16: FAT_size = (partition_size_in_clusters * 2) / 512; break;
+	case 32: FAT_size = (partition_size_in_clusters * 4) / 512; break;
+	}
+
+	if (sectors_per_cluster > 1) FAT_size = ((FAT_size - 1) / sectors_per_cluster + 1) * sectors_per_cluster;
+	reserved_sector_count = 32;
+
+	free_clusters = (partition_size_in_sectors - reserved_sector_count - FAT_size * num_FATs) / sectors_per_cluster - 2 - 1;
+
+	phat->partition_start_LBA = partition_start_LBA;
+	phat->FAT_size_in_sectors = FAT_size;
+	end_of_FAT_LBA = reserved_sector_count + num_FATs * FAT_size;
+	phat->total_sectors = partition_size_in_sectors;
+	phat->num_FATs = num_FATs;
+	phat->FAT1_start_LBA = reserved_sector_count;
+	phat->root_dir_start_LBA = end_of_FAT_LBA;
+	phat->root_dir_entry_count = root_dir_entry_count;
+	phat->bytes_per_sector = 512;
+	phat->sectors_per_cluster = sectors_per_cluster;
+	phat->num_diritems_in_a_sector = 512 / 32;
+	phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
+	phat->num_FAT_entries = (phat->FAT_size_in_sectors * phat->bytes_per_sector * 8) / phat->FAT_bits;
+	phat->FATs_are_same = 1;
+	phat->max_valid_cluster = phat->num_FAT_entries + 1;
+	phat->free_clusters = free_clusters;
+	phat->next_free_cluster = 3;
+	phat->is_dirty = 0;
+
+	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	if (FAT_bits != 32)
+	{
+		uint16_t num_root_dir_sectors = ((uint32_t)root_dir_entry_count * 32 + 511) / 512;
+		Phat_DBR_FAT_p dbr = (Phat_DBR_FAT_p)&cached_sector->data;
+		dbr->jump_boot[0] = 0xEB;
+		dbr->jump_boot[1] = 0x3C;
+		dbr->jump_boot[2] = 0x90;
+		memcpy(dbr->OEM_name, "*-v4VIHC", 8);
+		dbr->bytes_per_sector = 512;
+		dbr->sectors_per_cluster = sectors_per_cluster;
+		dbr->reserved_sector_count = reserved_sector_count;
+		dbr->num_FATs = num_FATs;
+		dbr->root_dir_entry_count = root_dir_entry_count;
+		dbr->total_sectors_16 = partition_size_in_sectors <= 0xFFFF ? partition_size_in_sectors : 0;
+		dbr->media = media_type;
+		dbr->FAT_size = FAT_size;
+		dbr->sectors_per_track = sectors_per_track;
+		dbr->num_heads = num_heads;
+		dbr->hidden_sectors = (uint32_t)partition_start_LBA;
+		dbr->total_sectors_32 = partition_size_in_sectors > 0xFFFF ? partition_size_in_sectors : 0;
+		dbr->BIOS_drive_number = (uint8_t)BIOS_drive_number;
+		dbr->first_head = 0x00;
+		dbr->extension_flag = 0x29;
+		dbr->volume_ID = volume_ID;
+		memset(dbr->volume_label, 0x20, sizeof dbr->volume_label);
+		memcpy(dbr->volume_label, volume_lable, strlen(volume_lable));
+		switch (FAT_bits)
+		{
+		case 12:
+			memcpy(dbr->file_system_type, "FAT12   ", 8);
+			boot_code =
+				"\x33\xC9\x8E\xD1\xBC\xFC\x7B\x16\x07\xBD\x78\x00\xC5\x76\x00\x1E"
+				"\x56\x16\x55\xBF\x22\x05\x89\x7E\x00\x89\x4E\x02\xB1\x0B\xFC\xF3"
+				"\xA4\x06\x1F\xBD\x00\x7C\xC6\x45\xFE\x0F\x38\x4E\x24\x7D\x20\x8B"
+				"\xC1\x99\xE8\x7E\x01\x83\xEB\x3A\x66\xA1\x1C\x7C\x66\x3B\x07\x8A"
+				"\x57\xFC\x75\x06\x80\xCA\x02\x88\x56\x02\x80\xC3\x10\x73\xED\x33"
+				"\xC9\xFE\x06\xD8\x7D\x8A\x46\x10\x98\xF7\x66\x16\x03\x46\x1C\x13"
+				"\x56\x1E\x03\x46\x0E\x13\xD1\x8B\x76\x11\x60\x89\x46\xFC\x89\x56"
+				"\xFE\xB8\x20\x00\xF7\xE6\x8B\x5E\x0B\x03\xC3\x48\xF7\xF3\x01\x46"
+				"\xFC\x11\x4E\xFE\x61\xBF\x00\x07\xE8\x28\x01\x72\x3E\x38\x2D\x74"
+				"\x17\x60\xB1\x0B\xBE\xD8\x7D\xF3\xA6\x61\x74\x3D\x4E\x74\x09\x83"
+				"\xC7\x20\x3B\xFB\x72\xE7\xEB\xDD\xFE\x0E\xD8\x7D\x7B\xA7\xBE\x7F"
+				"\x7D\xAC\x98\x03\xF0\xAC\x98\x40\x74\x0C\x48\x74\x13\xB4\x0E\xBB"
+				"\x07\x00\xCD\x10\xEB\xEF\xBE\x82\x7D\xEB\xE6\xBE\x80\x7D\xEB\xE1"
+				"\xCD\x16\x5E\x1F\x66\x8F\x04\xCD\x19\xBE\x81\x7D\x8B\x7D\x1A\x8D"
+				"\x45\xFE\x8A\x4E\x0D\xF7\xE1\x03\x46\xFC\x13\x56\xFE\xB1\x04\xE8"
+				"\xC2\x00\x72\xD7\xEA\x00\x02\x70\x00\x52\x50\x06\x53\x6A\x01\x6A"
+				"\x10\x91\x8B\x46\x18\xA2\x26\x05\x96\x92\x33\xD2\xF7\xF6\x91\xF7"
+				"\xF6\x42\x87\xCA\xF7\x76\x1A\x8A\xF2\x8A\xE8\xC0\xCC\x02\x0A\xCC"
+				"\xB8\x01\x02\x80\x7E\x02\x0E\x75\x04\xB4\x42\x8B\xF4\x8A\x56\x24"
+				"\xCD\x13\x61\x61\x72\x0A\x40\x75\x01\x42\x03\x5E\x0B\x49\x75\x77"
+				"\xC3\x03\x18\x01\x27\x0D\x0A\x49\x6E\x76\x61\x6C\x69\x64\x20\x73"
+				"\x79\x73\x74\x65\x6D\x20\x64\x69\x73\x6B\xFF\x0D\x0A\x44\x69\x73"
+				"\x6B\x20\x49\x2F\x4F\x20\x65\x72\x72\x6F\x72\xFF\x0D\x0A\x52\x65"
+				"\x70\x6C\x61\x63\x65\x20\x74\x68\x65\x20\x64\x69\x73\x6B\x2C\x20"
+				"\x61\x6E\x64\x20\x74\x68\x65\x6E\x20\x70\x72\x65\x73\x73\x20\x61"
+				"\x6E\x79\x20\x6B\x65\x79\x0D\x0A\x00\x00\x49\x4F\x20\x20\x20\x20"
+				"\x20\x20\x53\x59\x53\x4D\x53\x44\x4F\x53\x20\x20\x20\x53\x59\x53"
+				"\x7F\x01\x00\x41\xBB\x00\x07\x60\x66\x6A\x00\xE9\x3B\xFF\x00\x00";
+			phat->end_of_cluster_chain = 0xFF8;
+			break;
+		case 16:
+			memcpy(dbr->file_system_type, "FAT16   ", 8);
+			boot_code =
+				"\x33\xC9\x8E\xD1\xBC\xF0\x7B\x8E\xD9\xB8\x00\x20\x8E\xC0\xFC\xBD"
+				"\x00\x7C\x38\x4E\x24\x7D\x24\x8B\xC1\x99\xE8\x3C\x01\x72\x1C\x83"
+				"\xEB\x3A\x66\xA1\x1C\x7C\x26\x66\x3B\x07\x26\x8A\x57\xFC\x75\x06"
+				"\x80\xCA\x02\x88\x56\x02\x80\xC3\x10\x73\xEB\x33\xC9\x8A\x46\x10"
+				"\x98\xF7\x66\x16\x03\x46\x1C\x13\x56\x1E\x03\x46\x0E\x13\xD1\x8B"
+				"\x76\x11\x60\x89\x46\xFC\x89\x56\xFE\xB8\x20\x00\xF7\xE6\x8B\x5E"
+				"\x0B\x03\xC3\x48\xF7\xF3\x01\x46\xFC\x11\x4E\xFE\x61\xBF\x00\x00"
+				"\xE8\xE6\x00\x72\x39\x26\x38\x2D\x74\x17\x60\xB1\x0B\xBE\xA1\x7D"
+				"\xF3\xA6\x61\x74\x32\x4E\x74\x09\x83\xC7\x20\x3B\xFB\x72\xE6\xEB"
+				"\xDC\xA0\xFB\x7D\xB4\x7D\x8B\xF0\xAC\x98\x40\x74\x0C\x48\x74\x13"
+				"\xB4\x0E\xBB\x07\x00\xCD\x10\xEB\xEF\xA0\xFD\x7D\xEB\xE6\xA0\xFC"
+				"\x7D\xEB\xE1\xCD\x16\xCD\x19\x26\x8B\x55\x1A\x52\xB0\x01\xBB\x00"
+				"\x00\xE8\x3B\x00\x72\xE8\x5B\x8A\x56\x24\xBE\x0B\x7C\x8B\xFC\xC7"
+				"\x46\xF0\x3D\x7D\xC7\x46\xF4\x29\x7D\x8C\xD9\x89\x4E\xF2\x89\x4E"
+				"\xF6\xC6\x06\x96\x7D\xCB\xEA\x03\x00\x00\x20\x0F\xB6\xC8\x66\x8B"
+				"\x46\xF8\x66\x03\x46\x1C\x66\x8B\xD0\x66\xC1\xEA\x10\xEB\x5E\x0F"
+				"\xB6\xC8\x4A\x4A\x8A\x46\x0D\x32\xE4\xF7\xE2\x03\x46\xFC\x13\x56"
+				"\xFE\xEB\x4A\x52\x50\x06\x53\x6A\x01\x6A\x10\x91\x8B\x46\x18\x96"
+				"\x92\x33\xD2\xF7\xF6\x91\xF7\xF6\x42\x87\xCA\xF7\x76\x1A\x8A\xF2"
+				"\x8A\xE8\xC0\xCC\x02\x0A\xCC\xB8\x01\x02\x80\x7E\x02\x0E\x75\x04"
+				"\xB4\x42\x8B\xF4\x8A\x56\x24\xCD\x13\x61\x61\x72\x0B\x40\x75\x01"
+				"\x42\x03\x5E\x0B\x49\x75\x06\xF8\xC3\x41\xBB\x00\x00\x60\x66\x6A"
+				"\x00\xEB\xB0\x42\x4F\x4F\x54\x4D\x47\x52\x20\x20\x20\x20\x0D\x0A"
+				"\x52\x65\x6D\x6F\x76\x65\x20\x64\x69\x73\x6B\x73\x20\x6F\x72\x20"
+				"\x6F\x74\x68\x65\x72\x20\x6D\x65\x64\x69\x61\x2E\xFF\x0D\x0A\x44"
+				"\x69\x73\x6B\x20\x65\x72\x72\x6F\x72\xFF\x0D\x0A\x50\x72\x65\x73"
+				"\x73\x20\x61\x6E\x79\x20\x6B\x65\x79\x20\x74\x6F\x20\x72\x65\x73"
+				"\x74\x61\x72\x74\x0D\x0A\x00\x00\x00\x00\x00\x00\x00\xAC\xCB\xD8";
+			phat->end_of_cluster_chain = 0xFFF8;
+			break;
+		}
+		memcpy(dbr->boot_code, boot_code, 448);
+		dbr->boot_sector_signature = 0xAA55;
+		Phat_SetCachedSectorModified(cached_sector);
+
+		phat->root_dir_cluster = 0;
+		phat->data_start_LBA = phat->root_dir_start_LBA + (((LBA_t)root_dir_entry_count * 32) + 511) / 512;
+		phat->has_FSInfo = 0;
+
+		for (uint16_t i = 0; i < num_root_dir_sectors; i++)
+		{
+			ret = Phat_WriteSectorsWithoutCache(phat, partition_start_LBA + phat->root_dir_start_LBA + i, 1, empty_sector);
+			if (ret != PhatState_OK) return ret;
+		}
+	}
+	else
+	{
+		Phat_DBR_FAT32_t dbr_buf;
+		Phat_DBR_FAT32_p dbr = (Phat_DBR_FAT32_p)&cached_sector->data;
+		Phat_FSInfo_p fsi;
+		dbr->jump_boot[0] = 0xEB;
+		dbr->jump_boot[1] = 0x58;
+		dbr->jump_boot[2] = 0x90;
+		memcpy(dbr->OEM_name, "MSDOS5.0", 8);
+		dbr->bytes_per_sector = 512;
+		dbr->sectors_per_cluster = sectors_per_cluster;
+		dbr->reserved_sector_count = reserved_sector_count;
+		dbr->num_FATs = num_FATs;
+		dbr->root_dir_entry_count = 0;
+		dbr->total_sectors_16 = partition_size_in_sectors <= 0xFFFF ? partition_size_in_sectors : 0;
+		dbr->media = media_type;
+		dbr->FAT_size_16 = FAT_size <= 0xFFFF ? FAT_size : 0;
+		dbr->sectors_per_track = sectors_per_track;
+		dbr->num_heads = num_heads;
+		dbr->hidden_sectors = (uint32_t)partition_start_LBA;
+		dbr->total_sectors_32 = partition_size_in_sectors > 0xFFFF ? partition_size_in_sectors : 0;
+		dbr->FAT_size_32 = FAT_size > 0xFFFF ? FAT_size : 0;
+		dbr->FATs_are_different = 0;
+		dbr->version = 0;
+		dbr->root_dir_cluster = 2;
+		dbr->FS_info_sector = 1;
+		dbr->backup_boot_sector = 6;
+		memset(dbr->reserved, 0, sizeof dbr->reserved);
+		dbr->BIOS_drive_number = BIOS_drive_number;
+		dbr->extension_flag = 0x29;
+		dbr->volume_ID = volume_ID;
+		memset(dbr->volume_label, 0x20, sizeof dbr->volume_label);
+		memcpy(dbr->volume_label, volume_lable, strlen(volume_lable));
+		memcpy(dbr->file_system_type, "FAT32   ", 8);
+		boot_code =
+			"\x33\xC9\x8E\xD1\xBC\xF4\x7B\x8E\xC1\x8E\xD9\xBD\x00\x7C\x88\x56"
+			"\x40\x88\x4E\x02\x8A\x56\x40\xB4\x41\xBB\xAA\x55\xCD\x13\x72\x10"
+			"\x81\xFB\x55\xAA\x75\x0A\xF6\xC1\x01\x74\x05\xFE\x46\x02\xEB\x2D"
+			"\x8A\x56\x40\xB4\x08\xCD\x13\x73\x05\xB9\xFF\xFF\x8A\xF1\x66\x0F"
+			"\xB6\xC6\x40\x66\x0F\xB6\xD1\x80\xE2\x3F\xF7\xE2\x86\xCD\xC0\xED"
+			"\x06\x41\x66\x0F\xB7\xC9\x66\xF7\xE1\x66\x89\x46\xF8\x83\x7E\x16"
+			"\x00\x75\x39\x83\x7E\x2A\x00\x77\x33\x66\x8B\x46\x1C\x66\x83\xC0"
+			"\x0C\xBB\x00\x80\xB9\x01\x00\xE8\x2C\x00\xE9\xA8\x03\xA1\xF8\x7D"
+			"\x80\xC4\x7C\x8B\xF0\xAC\x84\xC0\x74\x17\x3C\xFF\x74\x09\xB4\x0E"
+			"\xBB\x07\x00\xCD\x10\xEB\xEE\xA1\xFA\x7D\xEB\xE4\xA1\x7D\x80\xEB"
+			"\xDF\x98\xCD\x16\xCD\x19\x66\x60\x80\x7E\x02\x00\x0F\x84\x20\x00"
+			"\x66\x6A\x00\x66\x50\x06\x53\x66\x68\x10\x00\x01\x00\xB4\x42\x8A"
+			"\x56\x40\x8B\xF4\xCD\x13\x66\x58\x66\x58\x66\x58\x66\x58\xEB\x33"
+			"\x66\x3B\x46\xF8\x72\x03\xF9\xEB\x2A\x66\x33\xD2\x66\x0F\xB7\x4E"
+			"\x18\x66\xF7\xF1\xFE\xC2\x8A\xCA\x66\x8B\xD0\x66\xC1\xEA\x10\xF7"
+			"\x76\x1A\x86\xD6\x8A\x56\x40\x8A\xE8\xC0\xE4\x06\x0A\xCC\xB8\x01"
+			"\x02\xCD\x13\x66\x61\x0F\x82\x74\xFF\x81\xC3\x00\x02\x66\x40\x49"
+			"\x75\x94\xC3\x42\x4F\x4F\x54\x4D\x47\x52\x20\x20\x20\x20\x00\x00"
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+			"\x00\x00\x0D\x0A\x44\x69\x73\x6B\x20\x65\x72\x72\x6F\x72\xFF\x0D"
+			"\x0A\x50\x72\x65\x73\x73\x20\x61\x6E\x79\x20\x6B\x65\x79\x20\x74"
+			"\x6F\x20\x72\x65\x73\x74\x61\x72\x74\x0D\x0A\x00\x00\x00\x00\x00"
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+			"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xAC\x01"
+			"\xB9\x01\x00\x00";
+		dbr->boot_sector_signature = 0xAA55;
+		memcpy(&dbr_buf, dbr, 512);
+		Phat_SetCachedSectorModified(cached_sector);
+
+		// FS Info
+		ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 1, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		fsi = (Phat_FSInfo_p)&cached_sector->data;
+		fsi->lead_signature = 0x41615252;
+		memset(fsi->reserved1, 0, sizeof fsi->reserved1);
+		fsi->struct_signature = 0x61417272;
+		fsi->free_cluster_count = free_clusters;
+		fsi->next_free_cluster = 3;
+		memset(fsi->reserved2, 0, sizeof fsi->reserved2);
+		fsi->trail_signature = 0xAA55;
+		Phat_SetCachedSectorModified(cached_sector);
+
+		// Next sector to the FS Info sector
+		ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 2, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		memset(cached_sector->data, 0, 510);
+		cached_sector->data[510] = 0x55;
+		cached_sector->data[511] = 0xAA;
+		Phat_SetCachedSectorModified(cached_sector);
+
+		// Backup DBR
+		ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA + 6, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		memcpy(cached_sector->data, &dbr_buf, 512);
+		Phat_SetCachedSectorModified(cached_sector);
+
+		phat->root_dir_cluster = 2;
+		phat->data_start_LBA = phat->root_dir_start_LBA;
+		phat->end_of_cluster_chain = 0x0FFFFFF8;
+		phat->has_FSInfo = 1;
+
+		// Wipe for FAT32 root dir
+		ret = Phat_WipeCluster(phat, 2);
+		if (ret != PhatState_OK) return ret;
+
+		// End of the root dir cluster chain
+		ret = Phat_WriteFAT(phat, 2, phat->end_of_cluster_chain, 0);
+		if (ret != PhatState_OK) return ret;
+	}
+
+	// Initialize the FAT table
+	for (uint8_t i = 0; i < num_FATs; i++)
+	{
+		LBA_t FAT_LBA = partition_start_LBA + phat->FAT1_start_LBA + FAT_size * i;
+		ret = Phat_ReadSectorThroughCache(phat, FAT_LBA, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+
+		memset(cached_sector->data, 0, 512);
+		switch (FAT_bits)
+		{
+		case 12:
+			*(uint32_t *)&cached_sector->data[0] = 0x00FFFFF0;
+			break;
+		case 16:
+			*(uint32_t *)&cached_sector->data[0] = 0xFFFFFFF8;
+			break;
+		case 32:
+			*(uint32_t *)&cached_sector->data[0] = 0x0FFFFFF8;
+			*(uint32_t *)&cached_sector->data[4] = 0xFFFFFFFF;
+			break;
+		}
+
+		Phat_SetCachedSectorModified(cached_sector);
+		for (uint32_t f = 1; f < FAT_size; f++)
+		{
+			ret = Phat_WriteSectorsWithoutCache(phat, FAT_LBA + f, 1, empty_sector);
+			if (ret != PhatState_OK) return ret;
+		}
+	}
+
+	ret = Phat_FlushCache(phat);
+	if (ret != PhatState_OK) return ret;
+
+	if (sectors_per_cluster > 8) return PhatState_FSIsSubOptimal;
+	return PhatState_OK;
+}

@@ -2901,6 +2901,7 @@ PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partiti
 		if (Phat_GetMBREntryInfo(entry, &par_start, &par_size) && par_start && par_size)
 		{
 			LBA_t par_end = par_start + par_size;
+			if (entry->partition_type = 0xEE) return PhatState_IsGPT;
 			if (!(partition_end <= par_start || par_end <= partition_start)) return PhatState_PartitionOverlapped;
 		}
 		else if (free_item < 0)

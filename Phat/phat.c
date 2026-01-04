@@ -51,8 +51,7 @@ typedef struct Phat_DBR_FAT_s
 	uint32_t volume_ID;
 	uint8_t volume_label[11];
 	uint8_t file_system_type[8];
-	uint8_t boot_code[447];
-	uint8_t dirty;
+	uint8_t boot_code[448];
 	uint16_t boot_sector_signature;
 }Phat_DBR_FAT_t, *Phat_DBR_FAT_p;
 
@@ -664,41 +663,24 @@ static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flu
 {
 	PhatState ret;
 	Phat_SectorCache_p cached_sector;
+	Cluster_t clean_bit;
+	Cluster_t dirty_entry;
 
-	if (phat->FAT_bits == 32)
+	switch(phat->FAT_bits)
 	{
-		uint32_t *FAT_table;
-		for (LBA_t i = 0; i < phat->num_FATs; i++)
-		{
-			ret = Phat_ReadSectorThroughCache(phat, phat->FAT1_start_LBA + i * phat->FAT_size_in_sectors, &cached_sector);
-			if (ret != PhatState_OK) return ret;
-			FAT_table = (uint32_t *)cached_sector->data;
-			if (is_dirty)
-				FAT_table[1] &= 0x7FFFFFFF;
-			else
-				FAT_table[1] |= 0xFFFFFFFF;
-			Phat_SetCachedSectorModified(cached_sector);
-			if (flush_immediately)
-			{
-				ret = Phat_InvalidateCachedSector(phat, cached_sector);
-				if (ret != PhatState_OK) return ret;
-			}
-		}
+	case 12: clean_bit = 0x800; break;
+	case 16: clean_bit = 0x8000; break;
+	case 32: clean_bit = 0x80000000; break;
+	default: return PhatState_InternalError;
 	}
-	else
-	{
-		Phat_DBR_FAT_p dbr;
-		ret = Phat_ReadSectorThroughCache(phat, phat->partition_start_LBA, &cached_sector);
-		if (ret != PhatState_OK) return ret;
-		dbr = (Phat_DBR_FAT_p)cached_sector->data;
-		dbr->dirty = is_dirty ? 1 : 0;
-		Phat_SetCachedSectorModified(cached_sector);
-		if (flush_immediately)
-		{
-			ret = Phat_InvalidateCachedSector(phat, cached_sector);
-			if (ret != PhatState_OK) return ret;
-		}
-	}
+
+	ret = Phat_ReadFAT(phat, 0, &dirty_entry);
+	if (ret != PhatState_OK) return ret;
+	if (is_dirty) dirty_entry &= clean_bit - 1;
+	else dirty_entry |= clean_bit;
+	ret = Phat_WriteFAT(phat, 0, &dirty_entry, 1);
+	if (ret != PhatState_OK) return ret;
+
 	return PhatState_OK;
 }
 
@@ -706,23 +688,22 @@ static PhatState Phat_CheckIsDirty(Phat_p phat, PhatBool_t *is_dirty)
 {
 	PhatState ret;
 	Phat_SectorCache_p cached_sector;
+	Cluster_t clean_bit;
+	Cluster_t dirty_entry;
 
-	if (phat->FAT_bits == 32)
+	switch (phat->FAT_bits)
 	{
-		uint32_t *FAT_table;
-		ret = Phat_ReadSectorThroughCache(phat, phat->FAT1_start_LBA, &cached_sector);
-		if (ret != PhatState_OK) return ret;
-		FAT_table = (uint32_t *)cached_sector->data;
-		*is_dirty = (FAT_table[1] & 0x80000000) == 0;
+	case 12: clean_bit = 0x800; break;
+	case 16: clean_bit = 0x8000; break;
+	case 32: clean_bit = 0x80000000; break;
+	default: return PhatState_InternalError;
 	}
-	else
-	{
-		Phat_DBR_FAT_p dbr;
-		ret = Phat_ReadSectorThroughCache(phat, phat->partition_start_LBA, &cached_sector);
-		if (ret != PhatState_OK) return ret;
-		dbr = (Phat_DBR_FAT_p)cached_sector->data;
-		*is_dirty = dbr->dirty;
-	}
+
+	ret = Phat_ReadFAT(phat, 0, &dirty_entry);
+	if (ret != PhatState_OK) return ret;
+	if (dirty_entry & clean_bit)*is_dirty = 0;
+	else *is_dirty = 1;
+
 	return PhatState_OK;
 }
 

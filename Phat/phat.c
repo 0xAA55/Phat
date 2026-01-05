@@ -923,8 +923,8 @@ static PhatState Phat_UpdateFSInfo(Phat_p phat)
 
 static int Phat_Cache_Compare_LBA(void const *a, void const *b)
 {
-	Phat_SectorCache_p ca = a;
-	Phat_SectorCache_p cb = b;
+	Phat_SectorCache_t const *ca = a;
+	Phat_SectorCache_t const *cb = b;
 
 	if (ca->LBA > cb->LBA) return 1;
 	if (ca->LBA < cb->LBA) return -1;
@@ -934,8 +934,9 @@ static int Phat_Cache_Compare_LBA(void const *a, void const *b)
 PhatState Phat_FlushCache(Phat_p phat)
 {
 	PhatState ret = PhatState_OK;
-	Phat_SectorCache_p pointers[PHAT_CACHED_SECTORS] = { 0 };
+	Phat_SectorCache_p pointers[PHAT_CACHED_SECTORS];
 
+	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++) pointers[i] = &phat->cache[i];
 	qsort(pointers, PHAT_CACHED_SECTORS, sizeof pointers[0], Phat_Cache_Compare_LBA);
 
 	// Check parameters

@@ -314,7 +314,7 @@ const char *Phat_StateToString(PhatState s)
 		"No free partitions to allocate",
 		"The partition is too small for FAT FS",
 		"The first sector does NOT appear to be a MBR",
-		"The disk is using GPT, currently not supported",
+		"The partition start LBA or end LBA is illegal, please use `Phat_GetFirstAndLastUsableLBA()` to check it out",
 		"The partition overlaps an existing one",
 		"The partition index is out of bound",
 		"64-bit LBA is needed for the disk",
@@ -3298,9 +3298,16 @@ PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partiti
 	Phat_MBR_Entry_p entry;
 	PhatBool_t is_gpt;
 	Phat_GPT_Header_t header;
+	LBA_t first_usable_LBA;
+	LBA_t last_usable_LBA;
+
+	ret = Phat_GetFirstAndLastUsableLBA(phat, &first_usable_LBA, &last_usable_LBA);
+	if (ret != PhatState_OK) return ret;
 
 	if (!partition_start || !partition_size_in_sectors) return PhatState_InvalidParameter;
 	partition_end = partition_start + partition_size_in_sectors;
+
+	if (partition_start < first_usable_LBA || partition_end > last_usable_LBA) return PhatState_PartitionLBAIsIllegal;
 
 	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
 	if (ret != PhatState_OK) return ret;

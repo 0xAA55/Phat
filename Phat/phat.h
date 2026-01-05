@@ -174,7 +174,7 @@ typedef enum PhatState_e
 	PhatState_NoFreePartitions,
 	PhatState_PartitionTooSmall,
 	PhatState_NoMBR,
-	PhatState_IsGPT,
+	PhatState_PartitionLBAIsIllegal,
 	PhatState_PartitionOverlapped,
 	PhatState_PartitionIndexOutOfBound,
 	PhatState_NeedBigLBA,

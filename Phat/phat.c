@@ -609,6 +609,14 @@ static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting
 	return 1;
 }
 
+static PhatBool_t Phat_Is2N(uint32_t i)
+{
+	if (!i) return 0;
+	while ((i & 1) == 0) i >>= 1;
+	if (i == 1) return 1;
+	return 0;
+}
+
 static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_FAT32_p dbr)
 {
 	if (dbr->boot_sector_signature != 0xAA55) return 0;

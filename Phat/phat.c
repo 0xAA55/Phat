@@ -597,14 +597,14 @@ static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting
 	LBA_t size_in_sectors_from_CHS = ending_LBA_from_CHS - starting_LBA_from_CHS;
 	if (entry->starting_LBA != 0 && entry->size_in_sectors != 0)
 	{
-		*p_starting_LBA = entry->starting_LBA;
-		*p_size_in_sectors = entry->size_in_sectors;
+		if (p_starting_LBA) *p_starting_LBA = entry->starting_LBA;
+		if (p_size_in_sectors) *p_size_in_sectors = entry->size_in_sectors;
 	}
 	else
 	{
 		if (ending_LBA_from_CHS < starting_LBA_from_CHS) return 0;
-		*p_starting_LBA = starting_LBA_from_CHS;
-		*p_size_in_sectors = size_in_sectors_from_CHS;
+		if (p_starting_LBA) *p_starting_LBA = starting_LBA_from_CHS;
+		if (p_size_in_sectors) *p_size_in_sectors = size_in_sectors_from_CHS;
 	}
 	return 1;
 }

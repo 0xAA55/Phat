@@ -136,6 +136,7 @@ typedef struct Phat_FileInfo_s
 	uint8_t offset_in_cluster;
 	PhatBool_t readonly;
 	PhatBool_t modified;
+	PhatBool_t sector_buffer_is_valid;
 	uint8_t sector_buffer[512];
 	LBA_t sector_buffer_LBA;
 }Phat_FileInfo_t, *Phat_FileInfo_p;

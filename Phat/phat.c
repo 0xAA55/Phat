@@ -2199,11 +2199,10 @@ static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info, Phat
 
 static PhatState Phat_GetCurFilePointerLBA(Phat_FileInfo_p file_info, LBA_p LBA_out, PhatBool_t allocate_new_sectors)
 {
-	uint8_t offset_in_cluster;
 	PhatState ret = Phat_UpdateClusterByFilePointer(file_info, allocate_new_sectors);
 	if (ret != PhatState_OK) return ret;
-	offset_in_cluster = (file_info->file_pointer / file_info->phat->bytes_per_sector) % file_info->phat->sectors_per_cluster;
-	*LBA_out = Phat_ClusterToLBA(file_info->phat, file_info->cur_cluster) + offset_in_cluster + file_info->phat->partition_start_LBA;
+	file_info->offset_in_cluster = (file_info->file_pointer / file_info->phat->bytes_per_sector) % file_info->phat->sectors_per_cluster;
+	*LBA_out = Phat_ClusterToLBA(file_info->phat, file_info->cur_cluster) + file_info->offset_in_cluster + file_info->phat->partition_start_LBA;
 	return PhatState_OK;
 }
 
@@ -2247,22 +2246,26 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, size_t bytes_to
 	sectors_to_read = bytes_to_read / 512;
 	while (sectors_to_read)
 	{
+		uint8_t continuous_sectors;
 		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 0);
 		if (ret != PhatState_OK) return ret;
 		if (FPLBA == file_info->sector_buffer_LBA)
 		{
+			continuous_sectors = 1;
 			memcpy(buffer, file_info->sector_buffer, 512);
 		}
 		else
 		{
-			ret = Phat_ReadSectorsWithoutCache(phat, FPLBA, 1, buffer);
+			continuous_sectors = phat->sectors_per_cluster - file_info->offset_in_cluster;
+			if (continuous_sectors > sectors_to_read) continuous_sectors = (uint8_t)sectors_to_read;
+			ret = Phat_ReadSectorsWithoutCache(phat, FPLBA, continuous_sectors, buffer);
 			if (ret != PhatState_OK) return ret;
 		}
-		sectors_to_read--;
-		buffer = (uint8_t *)buffer + 512;
-		file_info->file_pointer += 512;
-		*bytes_read += 512;
-		bytes_to_read -= 512;
+		sectors_to_read -= continuous_sectors;
+		buffer = (uint8_t *)buffer + 512 * continuous_sectors;
+		file_info->file_pointer += 512 * continuous_sectors;
+		*bytes_read += 512 * continuous_sectors;
+		bytes_to_read -= 512 * continuous_sectors;
 	}
 	if (bytes_to_read)
 	{
@@ -2342,20 +2345,23 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, size_t b
 	sectors_to_write = bytes_to_write / 512;
 	while (sectors_to_write)
 	{
+		uint8_t continuous_sectors;
 		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 1);
 		if (ret != PhatState_OK) return ret;
 		if (FPLBA == file_info->sector_buffer_LBA)
 		{
 			memcpy(file_info->sector_buffer, buffer, 512);
 		}
-		ret = Phat_WriteSectorsWithoutCache(phat, FPLBA, 1, buffer);
+		continuous_sectors = phat->sectors_per_cluster - file_info->offset_in_cluster;
+		if (continuous_sectors > sectors_to_write) continuous_sectors = (uint8_t)sectors_to_write;
+		ret = Phat_WriteSectorsWithoutCache(phat, FPLBA, continuous_sectors, buffer);
 		if (ret != PhatState_OK) return ret;
 		file_info->modified = 1;
-		sectors_to_write--;
-		buffer = (uint8_t *)buffer + 512;
-		file_info->file_pointer += 512;
-		*bytes_written += 512;
-		bytes_to_write -= 512;
+		sectors_to_write -= continuous_sectors;
+		buffer = (uint8_t *)buffer + 512 * continuous_sectors;
+		file_info->file_pointer += 512 * continuous_sectors;
+		*bytes_written += 512 * continuous_sectors;
+		bytes_to_write -= 512 * continuous_sectors;
 	}
 	if (bytes_to_write)
 	{

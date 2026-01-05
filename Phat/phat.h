@@ -133,6 +133,7 @@ typedef struct Phat_FileInfo_s
 	Cluster_t cur_cluster;
 	Cluster_t cur_cluster_index;
 	Cluster_t file_size;
+	uint8_t offset_in_cluster;
 	PhatBool_t readonly;
 	PhatBool_t modified;
 	uint8_t sector_buffer[512];

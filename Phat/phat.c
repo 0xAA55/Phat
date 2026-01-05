@@ -207,6 +207,8 @@ const char *Phat_StateToString(PhatState s)
 		"The first sector does NOT appear to be a MBR",
 		"The disk is using GPT, currently not supported",
 		"The partition overlaps an existing one",
+		"The partition index is out of bound",
+		"64-bit LBA is needed for the disk",
 	};
 	if (s >= PhatState_LastState) return "InvalidStateNumber";
 	else return strlist[s];

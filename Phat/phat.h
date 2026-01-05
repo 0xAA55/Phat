@@ -176,6 +176,8 @@ typedef enum PhatState_e
 	PhatState_NoMBR,
 	PhatState_IsGPT,
 	PhatState_PartitionOverlapped,
+	PhatState_PartitionIndexOutOfBound,
+	PhatState_NeedBigLBA,
 	PhatState_LastState,
 }PhatState;
 

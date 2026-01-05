@@ -808,12 +808,18 @@ static PhatState Phat_SetGPTEntry(Phat_p phat, Phat_GPT_Header_p header, uint32_
 	uint32_t partition_entry_offset;
 
 	num_entries_in_a_sector = 512 / header->size_of_partition_entry;
-	partition_entry_LBA = (LBA_t)header->partition_entry_LBA + partition_index * header->size_of_partition_entry / 512;
 	partition_entry_offset = (header->size_of_partition_entry > 512 ? 0 : partition_index % num_entries_in_a_sector);
 
+	partition_entry_LBA = (LBA_t)header->partition_entry_LBA + partition_index * header->size_of_partition_entry / 512;
 	ret = Phat_ReadSectorThroughCache(phat, partition_entry_LBA, &cached_sector);
 	if (ret != PhatState_OK) return ret;
+	*((Phat_GPT_Partition_Entry_p)cached_sector->data + partition_entry_offset) = *entry;
+	Phat_SetCachedSectorModified(cached_sector);
 
+	// Write to the backup partition table
+	partition_entry_LBA = (LBA_t)header->last_usable_LBA + 1 + partition_index * header->size_of_partition_entry / 512;
+	ret = Phat_ReadSectorThroughCache(phat, partition_entry_LBA, &cached_sector);
+	if (ret != PhatState_OK) return ret;
 	*((Phat_GPT_Partition_Entry_p)cached_sector->data + partition_entry_offset) = *entry;
 	Phat_SetCachedSectorModified(cached_sector);
 	return PhatState_OK;

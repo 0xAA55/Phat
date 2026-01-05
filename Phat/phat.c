@@ -3255,6 +3255,8 @@ PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partiti
 	LBA_t partition_end;
 	int free_item = -1;
 	Phat_MBR_Entry_p entry;
+	PhatBool_t is_gpt;
+	Phat_GPT_Header_t header;
 
 	if (!partition_start || !partition_size_in_sectors) return PhatState_InvalidParameter;
 	partition_end = partition_start + partition_size_in_sectors;
@@ -3265,6 +3267,90 @@ PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partiti
 	mbr = (Phat_MBR_p)&cached_sector->data;
 	if (!Phat_IsSectorMBR(mbr)) return PhatState_NoMBR;
 
+	ret = Phat_IsDiskGPT(phat, mbr, &is_gpt, &header);
+	if (ret != PhatState_OK) return ret;
+
+	if (is_gpt)
+	{
+		Phat_GUID_t guid;
+		uint32_t crc = 0;
+		Phat_GPT_Header_p p_header;
+		for (uint32_t i = 0; i < header.number_of_partition_entries; i++)
+		{
+			Phat_GPT_Partition_Entry_p gpt_entry;
+			ret = Phat_GetGPTEntry(phat, &header, i, &gpt_entry);
+			if (ret != PhatState_OK) return ret;
+
+			if (memcmp(&gpt_entry->partition_type_GUID, &GUID_empty, 16))
+			{
+				// Non-empty item, check if the new partition overlaps with it
+				if (!(partition_end <= gpt_entry->starting_LBA || gpt_entry->ending_LBA <= partition_start)) return PhatState_PartitionOverlapped;
+			}
+		}
+		// Loop until found a unique GUID
+		for (;;)
+		{
+			PhatBool_t guid_is_good = 1;
+			guid = Phat_GenGUID();
+			for (uint32_t i = 0; i < header.number_of_partition_entries; i++)
+			{
+				Phat_GPT_Partition_Entry_p gpt_entry;
+				ret = Phat_GetGPTEntry(phat, &header, i, &gpt_entry);
+				if (ret != PhatState_OK) return ret;
+
+				if (!memcmp(&gpt_entry->partition_type_GUID, &GUID_empty, 16))
+				{
+					if (!memcmp(&gpt_entry->unique_partition_GUID, &guid, 16))
+					{
+						guid_is_good = 0;
+						break;
+					}
+				}
+			}
+			if (guid_is_good) break;
+		}
+		for (uint32_t i = 0; i < header.number_of_partition_entries; i++)
+		{
+			Phat_GPT_Partition_Entry_p gpt_entry;
+			ret = Phat_GetGPTEntry(phat, &header, i, &gpt_entry);
+			if (ret != PhatState_OK) return ret;
+
+			if (!memcmp(&gpt_entry->partition_type_GUID, &GUID_empty, 16))
+			{
+				memcpy(&gpt_entry->partition_type_GUID, &GUID_basic_data_partition_type, 16);
+				memcpy(&gpt_entry->unique_partition_GUID, &guid, 16);
+				gpt_entry->starting_LBA = partition_start;
+				gpt_entry->ending_LBA = partition_end;
+				gpt_entry->attributes = 0;
+				Phat_Wcsncpy(gpt_entry->partition_name, L"Basic data partition", 36);
+				ret = Phat_SetGPTEntry(phat, &header, i, gpt_entry);
+				if (ret != PhatState_OK) return ret;
+				break;
+			}
+		}
+		for (uint32_t i = 0; i < header.number_of_partition_entries; i++)
+		{
+			Phat_GPT_Partition_Entry_p gpt_entry;
+			ret = Phat_GetGPTEntry(phat, &header, i, &gpt_entry);
+			if (ret != PhatState_OK) return ret;
+			crc = Phat_CRC32(crc, gpt_entry, sizeof * gpt_entry);
+		}
+		ret = Phat_ReadSectorThroughCache(phat, 1, &cached_sector);
+		if (ret != PhatState_OK) return ret;
+		p_header = (Phat_GPT_Header_p)cached_sector->data;
+		p_header->partition_entry_CRC32 = crc;
+		p_header->header_CRC32 = 0;
+		crc = Phat_CRC32(0, p_header, sizeof * p_header);
+		p_header->header_CRC32 = crc;
+		Phat_SetCachedSectorModified(cached_sector);
+		if (flush)
+		{
+			ret = Phat_FlushCache(phat);
+			if (ret != PhatState_OK) return ret;
+		}
+		return PhatState_OK;
+	}
+
 	for (int i = 0; i < 4; i++)
 	{
 		entry = &mbr->partition_entries[i];
@@ -3273,7 +3359,6 @@ PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partiti
 		if (Phat_GetMBREntryInfo(entry, &par_start, &par_size) && par_start && par_size)
 		{
 			LBA_t par_end = par_start + par_size;
-			if (entry->partition_type = 0xEE) return PhatState_IsGPT;
 			if (!(partition_end <= par_start || par_end <= partition_start)) return PhatState_PartitionOverlapped;
 		}
 		else if (free_item < 0)

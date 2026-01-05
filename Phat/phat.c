@@ -3145,6 +3145,8 @@ PhatState Phat_InitializeMBR(Phat_p phat, PhatBool_t force, PhatBool_t flush)
 
 	if (!phat) return PhatState_InvalidParameter;
 
+	phat->write_enable = 1;
+
 	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
 	if (ret != PhatState_OK) return ret;
 

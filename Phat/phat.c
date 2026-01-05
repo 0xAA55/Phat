@@ -617,12 +617,14 @@ static PhatBool_t Phat_Is2N(uint32_t i)
 	return 0;
 }
 
-static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_FAT32_p dbr)
+static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_FAT_p dbr)
 {
 	if (dbr->boot_sector_signature != 0xAA55) return 0;
-	if (dbr->bytes_per_sector == 0) return 0;
-	if (dbr->sectors_per_cluster == 0) return 0;
+	if (!Phat_Is2N(dbr->bytes_per_sector)) return 0;
+	if (!Phat_Is2N(dbr->sectors_per_cluster)) return 0;
 	if (dbr->reserved_sector_count == 0) return 0;
+	if (dbr->total_sectors_16 && dbr->total_sectors_32) return 0;
+	if (!dbr->total_sectors_16 && !dbr->total_sectors_32) return 0;
 	if (dbr->num_FATs == 0) return 0;
 	if (dbr->jump_boot[0] != 0xEB && dbr->jump_boot[0] != 0xE9) return 0;
 	return 1;
@@ -630,7 +632,7 @@ static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_FAT32_p dbr)
 
 static PhatBool_t Phat_IsSectorMBR(const Phat_MBR_p mbr)
 {
-	if (Phat_IsSectorDBR((Phat_DBR_FAT32_p)mbr)) return 0;
+	if (Phat_IsSectorDBR((Phat_DBR_FAT_p)mbr)) return 0;
 	if (mbr->boot_signature != 0xAA55) return 0;
 	for (size_t i = 0; i < 4; i++)
 	{
@@ -797,7 +799,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 
 	dbr = (Phat_DBR_FAT_p)cached_sector->data;
 	dbr_32 = (Phat_DBR_FAT32_p)cached_sector->data;
-	if (!Phat_IsSectorDBR(dbr_32)) return PhatState_FSNotFat;
+	if (!Phat_IsSectorDBR(dbr)) return PhatState_FSNotFat;
 	if (!memcmp(dbr->file_system_type, "FAT12   ", 8))
 		phat->FAT_bits = 12;
 	else if (!memcmp(dbr->file_system_type, "FAT16   ", 8))

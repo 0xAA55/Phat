@@ -836,7 +836,6 @@ static PhatState Phat_IsDiskGPT(Phat_p phat, Phat_MBR_p mbr, PhatBool_p is_gpt, 
 		Phat_MBR_Entry_p e = &mbr->partition_entries[i];
 		if (e->boot_indicator == 0 && e->partition_type == 0xEE)
 		{
-			Phat_GPT_Header_t header;
 			LBA_t gpt_protective_LBA;
 
 			if (!Phat_GetMBREntryInfo(e, &gpt_protective_LBA, NULL)) continue;
@@ -846,7 +845,7 @@ static PhatState Phat_IsDiskGPT(Phat_p phat, Phat_MBR_p mbr, PhatBool_p is_gpt, 
 
 			if (!Phat_IsValidGPTHeader(gpt_protective_LBA, (Phat_GPT_Header_p)cached_sector->data)) break;
 			*is_gpt = 1;
-			memcpy(&gpt_header_out, cached_sector->data, sizeof * gpt_header_out);
+			memcpy(gpt_header_out, cached_sector->data, sizeof * gpt_header_out);
 			return PhatState_OK;
 		}
 	}

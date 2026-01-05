@@ -440,7 +440,7 @@ __weak LBA_t BSP_GetDeviceCapacity(void *userdata)
 		ShowLastError("Get the VHD capacity by using `GetFileSizeEx()`");
 		return 0;
 	}
-	return (LBA_t)(file_size.QuadPart / 512);
+	return (LBA_t)(file_size.QuadPart / 512) - 1;
 }
 
 __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)

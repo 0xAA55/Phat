@@ -29,10 +29,13 @@ int main(int argc, char**argv)
 	res = Phat_Mount(&phat, 0, 1);
 	if (res == PhatState_NoMBR || res == PhatState_FSNotFat)
 	{
-		res = Phat_InitializeMBR(&phat, 0, 0);
+		res = Phat_InitializeGPT(&phat, 0, 0);
 		if (res == PhatState_OK || res == PhatState_DiskAlreadyInitialized)
 		{
-			V_(Phat_CreatePartition(&phat, 0x80, phat.driver.device_capacity_in_sectors - 80, 1, 0));
+			LBA_t first_usable;
+			LBA_t last_usable;
+			V(Phat_GetFirstAndLastUsableLBA(&phat, &first_usable, &last_usable));
+			V_(Phat_CreatePartition(&phat, first_usable, last_usable - first_usable, 1, 0));
 			res = Phat_MakeFS_And_Mount(&phat, 0, 32, 0, 0xAABBCCDD, NULL, 0);
 			switch (res)
 			{

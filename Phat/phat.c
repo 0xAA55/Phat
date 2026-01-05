@@ -41,6 +41,34 @@ typedef struct GPT_GUID_s
 	uint8_t part4[8];
 }Phat_GUID_t, *GPT_GUID_p;
 
+typedef struct Phat_GPT_Header_s
+{
+	char signature[8];
+	uint32_t revision;
+	uint32_t header_size;
+	uint32_t header_CRC32;
+	uint32_t reserved;
+	uint64_t my_LBA;
+	uint64_t alternate_LBA;
+	uint64_t first_usable_LBA;
+	uint64_t last_usable_LBA;
+	Phat_GUID_t disk_GUID;
+	uint64_t partition_entry_LBA;
+	uint32_t number_of_partition_entries;
+	uint32_t size_of_partition_entry;
+	uint32_t partition_entry_CRC32;
+}Phat_GPT_Header_t, *Phat_GPT_Header_p;
+
+typedef struct Phat_GPT_Partition_Entry_s
+{
+	Phat_GUID_t partition_type_GUID;
+	Phat_GUID_t unique_partition_GUID;
+	uint64_t starting_LBA;
+	uint64_t ending_LBA;
+	uint64_t attributes;
+	WChar_t partition_name[36];
+}Phat_GPT_Partition_Entry_t, *Phat_GPT_Partition_Entry_p;
+
 typedef struct Phat_DBR_FAT_s
 {
 	uint8_t jump_boot[3];
@@ -665,6 +693,144 @@ static PhatBool_t Phat_IsSectorMBR(const Phat_MBR_p mbr)
 		if (e->boot_indicator != 0 && e->boot_indicator != 0x80) return 0;
 	}
 	return 1;
+}
+
+static PhatBool_t Phat_IsValidGPTHeader(LBA_t LBA_to_header, Phat_GPT_Header_p gpt_header)
+{
+	if (memcmp("EFI PART", gpt_header->signature, 8)) return 0;
+	if (gpt_header->header_size < 92) return 0;
+	if (gpt_header->my_LBA != LBA_to_header) return 0;
+	if (gpt_header->size_of_partition_entry < sizeof(Phat_GPT_Partition_Entry_t) || !Phat_Is2N(gpt_header->size_of_partition_entry)) return 0;
+	return 1;
+}
+
+static PhatState Phat_GetGPTEntry(Phat_p phat, Phat_GPT_Header_p header, uint32_t partition_index, Phat_GPT_Partition_Entry_p *pp_entry_out)
+{
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+	uint32_t num_entries_in_a_sector;
+	LBA_t partition_entry_LBA;
+	uint32_t partition_entry_offset;
+
+	num_entries_in_a_sector = 512 / header->size_of_partition_entry;
+	partition_entry_LBA = (LBA_t)header->partition_entry_LBA + partition_index * header->size_of_partition_entry / 512;
+	partition_entry_offset = (header->size_of_partition_entry > 512 ? 0 : partition_index % num_entries_in_a_sector);
+
+	ret = Phat_ReadSectorThroughCache(phat, partition_entry_LBA, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	*pp_entry_out = (Phat_GPT_Partition_Entry_p)cached_sector->data + partition_entry_offset;
+	return PhatState_OK;
+}
+
+static PhatState Phat_SetGPTEntry(Phat_p phat, Phat_GPT_Header_p header, uint32_t partition_index, Phat_GPT_Partition_Entry_p entry)
+{
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+	uint32_t num_entries_in_a_sector;
+	LBA_t partition_entry_LBA;
+	uint32_t partition_entry_offset;
+
+	num_entries_in_a_sector = 512 / header->size_of_partition_entry;
+	partition_entry_LBA = (LBA_t)header->partition_entry_LBA + partition_index * header->size_of_partition_entry / 512;
+	partition_entry_offset = (header->size_of_partition_entry > 512 ? 0 : partition_index % num_entries_in_a_sector);
+
+	ret = Phat_ReadSectorThroughCache(phat, partition_entry_LBA, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	*((Phat_GPT_Partition_Entry_p)cached_sector->data + partition_entry_offset) = *entry;
+	Phat_SetCachedSectorModified(cached_sector);
+	return PhatState_OK;
+}
+
+static PhatState Phat_IsDiskGPT(Phat_p phat, Phat_MBR_p mbr, PhatBool_p is_gpt, Phat_GPT_Header_p gpt_header_out)
+{
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+
+	*is_gpt = 0;
+	for (size_t i = 0; i < 4; i++)
+	{
+		Phat_MBR_Entry_p e = &mbr->partition_entries[i];
+		if (e->boot_indicator == 0 && e->partition_type == 0xEE)
+		{
+			Phat_GPT_Header_t header;
+			LBA_t gpt_protective_LBA;
+
+			if (!Phat_GetMBREntryInfo(e, &gpt_protective_LBA, NULL)) continue;
+
+			ret = Phat_ReadSectorThroughCache(phat, gpt_protective_LBA, &cached_sector);
+			if (ret != PhatState_OK) return ret;
+
+			if (!Phat_IsValidGPTHeader(gpt_protective_LBA, (Phat_GPT_Header_p)cached_sector->data)) break;
+			*is_gpt = 1;
+			memcpy(&gpt_header_out, cached_sector->data, sizeof * gpt_header_out);
+			return PhatState_OK;
+		}
+	}
+	return PhatState_OK;
+}
+
+static PhatState Phat_GetPartitionInfo(Phat_p phat, uint32_t partition_index, LBA_p partition_start_LBA, LBA_p partition_end_LBA)
+{
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+	Phat_MBR_p mbr;
+	LBA_t partition_size;
+	Phat_GPT_Header_t header;
+	uint32_t basic_data_index = 0;
+	Phat_GPT_Partition_Entry_p gpt_entry;
+	PhatBool_t is_gpt;
+
+	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	// Check if the first sector is actually a DBR
+	mbr = (Phat_MBR_p)cached_sector->data;
+	if (Phat_IsSectorDBR((Phat_DBR_FAT_p)mbr))
+	{
+		if (partition_index != 0) return PhatState_NoMBR;
+		*partition_start_LBA = 0;
+		*partition_end_LBA = phat->driver.device_capacity_in_sectors;
+		return PhatState_OK;
+	}
+	if (mbr->boot_signature != 0xAA55) return PhatState_NoMBR;
+
+	ret = Phat_IsDiskGPT(phat, mbr, &is_gpt, &header);
+	if (ret != PhatState_OK) return ret;
+	if (is_gpt)
+	{
+		if (partition_index >= header.number_of_partition_entries) return PhatState_PartitionIndexOutOfBound;
+		if (header.partition_entry_LBA > 0xFFFFFFFF && sizeof(LBA_t) < 8) return PhatState_NeedBigLBA;
+
+		for (uint32_t i = 0; i < header.number_of_partition_entries; i++)
+		{
+			ret = Phat_GetGPTEntry(phat, &header, i, &gpt_entry);
+			if (ret != PhatState_OK) return ret;
+
+			if (!memcmp(&gpt_entry->partition_type_GUID, &GUID_basic_data_partition_type, 16))
+			{
+				if (partition_index == basic_data_index) break;
+				basic_data_index++;
+			}
+		}
+
+		if (gpt_entry->starting_LBA > 0xFFFFFFFF) return PhatState_NeedBigLBA;
+		if (gpt_entry->ending_LBA > 0xFFFFFFFF) return PhatState_NeedBigLBA;
+		*partition_start_LBA = (LBA_t)gpt_entry->starting_LBA;
+		*partition_end_LBA = (LBA_t)gpt_entry->ending_LBA;
+		return PhatState_OK;
+	}
+
+	// Not GPT, get back to MBR partition
+	if (partition_index >= 4) return PhatState_PartitionIndexOutOfBound;
+	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	mbr = (Phat_MBR_p)cached_sector->data;
+	if (!Phat_GetMBREntryInfo(&mbr->partition_entries[partition_index], partition_start_LBA, &partition_size)) return PhatState_PartitionTableError;
+	*partition_end_LBA = *partition_start_LBA + partition_size;
+	return PhatState_OK;
 }
 
 PhatState Phat_Init(Phat_p phat)

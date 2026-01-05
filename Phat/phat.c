@@ -3165,6 +3165,88 @@ PhatState Phat_InitializeMBR(Phat_p phat, PhatBool_t force, PhatBool_t flush)
 	return PhatState_OK;
 }
 
+PhatState Phat_InitializeGPT(Phat_p phat, PhatBool_t force, PhatBool_t flush)
+{
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+	LBA_t num_sectors_total;
+	LBA_t first_usable_LBA;
+	LBA_t last_usable_LBA;
+	Phat_MBR_p mbr;
+	Phat_MBR_Entry_p entry;
+	Phat_GPT_Header_t header;
+
+	if (!phat) return PhatState_InvalidParameter;
+	num_sectors_total = phat->driver.device_capacity_in_sectors;
+
+	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	if (!force)
+	{
+		if (cached_sector->data[510] == 0x55 && cached_sector->data[511] == 0xAA) return PhatState_DiskAlreadyInitialized;
+	}
+
+	phat->write_enable = 1;
+
+	mbr = (Phat_MBR_p)cached_sector->data;
+	memset(mbr, 0, 510);
+	mbr->boot_signature = 0xAA55;
+	entry = &mbr->partition_entries[0];
+	entry->boot_indicator = 0;
+	Phat_LBA_to_CHS(1, &entry->starting_chs);
+	entry->partition_type = 0xEE;
+	Phat_LBA_to_CHS(MAX_CHS_LBA + 1, &entry->ending_chs);
+	entry->starting_LBA = 1;
+	entry->size_in_sectors = 0xFFFFFFFF;
+	Phat_SetCachedSectorModified(cached_sector);
+
+	first_usable_LBA = 0x22;
+	last_usable_LBA = num_sectors_total - 0x22;
+
+	memset(&header, 0, sizeof header);
+	memcpy(header.signature, "EFI PART", 8);
+	header.revision = 0x00010000;
+	header.header_size = sizeof header;
+	header.my_LBA = 1;
+	header.alternate_LBA = num_sectors_total - 1;
+	header.first_usable_LBA = first_usable_LBA;
+	header.last_usable_LBA = last_usable_LBA;
+	header.disk_GUID = Phat_GenGUID();
+	header.partition_entry_LBA = 2;
+	header.number_of_partition_entries = 0x80;
+	header.size_of_partition_entry = sizeof(Phat_GPT_Partition_Entry_t);
+	header.header_CRC32 = Phat_CRC32(0, &header, sizeof header);
+
+	ret = Phat_ReadSectorThroughCache(phat, 1, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+	*(Phat_GPT_Header_p)cached_sector->data = header;
+	Phat_SetCachedSectorModified(cached_sector);
+
+	ret = Phat_ReadSectorThroughCache(phat, num_sectors_total - 1, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+	*(Phat_GPT_Header_p)cached_sector->data = header;
+	Phat_SetCachedSectorModified(cached_sector);
+
+	for (LBA_t i = 2; i < first_usable_LBA; i++)
+	{
+		ret = Phat_WriteSectorsWithoutCache(phat, i, 1, empty_sector);
+		if (ret != PhatState_OK) return ret;
+	}
+	for (LBA_t i = last_usable_LBA + 1; i < header.alternate_LBA; i++)
+	{
+		ret = Phat_WriteSectorsWithoutCache(phat, i, 1, empty_sector);
+		if (ret != PhatState_OK) return ret;
+	}
+
+	if (flush)
+	{
+		ret = Phat_FlushCache(phat);
+		if (ret != PhatState_OK) return ret;
+	}
+	return ret;
+}
+
 PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partition_size_in_sectors, PhatBool_t bootable, PhatBool_t flush)
 {
 	PhatState ret;

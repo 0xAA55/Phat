@@ -229,6 +229,7 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name);
 PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath);
 
 PhatState Phat_InitializeMBR(Phat_p phat, PhatBool_t force, PhatBool_t flush);
+PhatState Phat_InitializeGPT(Phat_p phat, PhatBool_t force, PhatBool_t flush);
 PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partition_size_in_sectors, PhatBool_t bootable, PhatBool_t flush);
 PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, uint16_t root_dir_entry_count, uint32_t volume_ID, const char *volume_lable, PhatBool_t flush);
 #endif

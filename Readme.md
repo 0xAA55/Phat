@@ -8,6 +8,8 @@
 
 Phat is a FAT filesystem API designed for embedded systems and cross-platform development.
 
+* Support MBR/GPT partition table
+* Support no partition table (use the whole disk as a partition)
 * Basic implementation for FAT12/16/32.
 	* Iterate through directory
 	* Open file(with creation or readonly)
@@ -19,8 +21,8 @@ Phat is a FAT filesystem API designed for embedded systems and cross-platform de
 	* Remove directory
 	* Rename
 	* Move
-	* Initialize a disk to MBR
-	* Create partitions in a MBR disk
+	* Initialize a disk to MBR/GPT
+	* Create partitions in a MBR/GPT disk
 	* MakeFS: Format a partition to FAT12/16/32
 * Debugging on Windows by accessing a virtual drive.
 * Support for multiple partitions.

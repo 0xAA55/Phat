@@ -1,6 +1,7 @@
 #include "phat.h"
 
 #include <ctype.h>
+#include <stdlib.h>
 #include <string.h>
 
 #ifndef UNUSED
@@ -883,17 +884,29 @@ static PhatState Phat_UpdateFSInfo(Phat_p phat)
 	return PhatState_OK;
 }
 
+static int Phat_Cache_Compare_LBA(void const *a, void const *b)
+{
+	Phat_SectorCache_p ca = a;
+	Phat_SectorCache_p cb = b;
+
+	if (ca->LBA > cb->LBA) return 1;
+	if (ca->LBA < cb->LBA) return -1;
+	return 0;
+}
+
 PhatState Phat_FlushCache(Phat_p phat)
 {
 	PhatState ret = PhatState_OK;
+	Phat_SectorCache_p pointers[PHAT_CACHED_SECTORS] = { 0 };
+
+	qsort(pointers, PHAT_CACHED_SECTORS, sizeof pointers[0], Phat_Cache_Compare_LBA);
 
 	// Check parameters
 	if (!phat) return PhatState_InvalidParameter;
 
 	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
 	{
-		Phat_SectorCache_p cached_sector = &phat->cache[i];
-		ret = Phat_InvalidateCachedSector(phat, cached_sector);
+		ret = Phat_InvalidateCachedSector(phat, pointers[i]);
 		if (ret != PhatState_OK) return ret;
 	}
 	return ret;

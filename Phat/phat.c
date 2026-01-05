@@ -3317,6 +3317,7 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 	PhatState ret;
 	Phat_SectorCache_p cached_sector;
 	LBA_t partition_start_LBA;
+	LBA_t partition_end_LBA;
 	LBA_t partition_size_in_sectors;
 	Phat_MBR_p mbr;
 	PhatBool_t is_mbr = 0;
@@ -3410,23 +3411,9 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 
 	if (!phat) return PhatState_InvalidParameter;
 
-	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
+	ret = Phat_GetPartitionInfo(phat, partition_index, &partition_start_LBA, &partition_end_LBA);
 	if (ret != PhatState_OK) return ret;
-
-	mbr = (Phat_MBR_p)&cached_sector->data;
-	if (Phat_IsSectorMBR(mbr))
-	{
-		if (!Phat_GetMBREntryInfo(&mbr->partition_entries[partition_index], &partition_start_LBA, &partition_size_in_sectors)) return PhatState_PartitionTableError;
-		if (!partition_start_LBA || !partition_size_in_sectors) return PhatState_PartitionTableError;
-		is_mbr = 1;
-	}
-	else
-	{
-		if (partition_index != 0) return PhatState_InvalidParameter;
-		partition_start_LBA = 0;
-		partition_size_in_sectors = phat->driver.device_capacity_in_sectors;
-		is_mbr = 0;
-	}
+	partition_size_in_sectors = partition_end_LBA - partition_start_LBA;
 
 	if (partition_size_in_sectors >= 0xFFFFFFFF / 512) return PhatState_CannotMakeFS;
 

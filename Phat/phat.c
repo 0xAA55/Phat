@@ -33,6 +33,14 @@ typedef struct Phat_MBR_s
 	uint16_t boot_signature;
 }Phat_MBR_t, *Phat_MBR_p;
 
+typedef struct GPT_GUID_s
+{
+	uint32_t part1;
+	uint16_t part2;
+	uint16_t part3;
+	uint8_t part4[8];
+}Phat_GUID_t, *GPT_GUID_p;
+
 typedef struct Phat_DBR_FAT_s
 {
 	uint8_t jump_boot[3];
@@ -138,6 +146,11 @@ typedef struct Phat_LFN_Entry_s
 #define CI_BASENAME_IS_LOWER 0x10
 
 static const uint8_t empty_sector[512] = { 0 };
+
+static const Phat_GUID_t GUID_EFI_system_partition_type =  { 0xC12A7328, 0xF81F, 0x11D2, "\xBA\x4B\x00\xA0\xC9\x3E\xC9\x3B" };
+static const Phat_GUID_t GUID_MS_reserved_partition_type = { 0xE3C9E316, 0x0B5C, 0x4DB8, "\x81\x7D\xF9\x2D\xF0\x02\x15\xAE" };
+static const Phat_GUID_t GUID_basic_data_partition_type =  { 0xEBD0A0A2, 0xB9E5, 0x4433, "\x87\xC0\x68\xB6\xB7\x26\x99\xC7" };
+static const Phat_GUID_t GUID_empty = {0};
 
 static PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_t *read_out);
 static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write, PhatBool_t flush);
@@ -245,6 +258,18 @@ static int Phat_Wcscmp(WChar_p s1, const WChar_p s2)
 	if (len1 > len2) return 1;
 	if (len2 > len1) return -1;
 	return memcmp(s1, s2, len1 * sizeof(WChar_t));
+}
+
+static Phat_GUID_t Phat_GenGUID()
+{
+	Phat_GUID_t ret = { 0 };
+	uint8_t *ptr = (uint8_t*) & ret;
+	for (int i = 0; i < 16; i++) ptr[i] = (uint8_t)rand();
+	ptr[6] &= 0x0F;
+	ptr[6] |= 0x40;
+	ptr[8] &= 0x3F;
+	ptr[8] |= 0x80;
+	return ret;
 }
 
 void Phat_ToUpperDirectoryPath(WChar_p path)

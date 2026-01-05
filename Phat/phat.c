@@ -952,11 +952,11 @@ static PhatState Phat_CheckIsDirty(Phat_p phat, PhatBool_t *is_dirty)
 PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 {
 	LBA_t partition_start_LBA = 0;
+	LBA_t partition_end_LBA = 0;
 	LBA_t total_sectors = 0;
 	LBA_t end_of_FAT_LBA;
 	PhatState ret = PhatState_OK;
 	Phat_SectorCache_p cached_sector;
-	Phat_MBR_p mbr;
 	Phat_DBR_FAT_p dbr;
 	Phat_DBR_FAT32_p dbr_32;
 	Phat_FSInfo_p fsi;
@@ -964,27 +964,12 @@ PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 	// Check parameters
 	if (!phat) return PhatState_InvalidParameter;
 
+	ret = Phat_GetPartitionInfo(phat, partition_index, &partition_start_LBA, &partition_end_LBA);
+	if (ret != PhatState_OK) return ret;
+	total_sectors = partition_end_LBA - partition_start_LBA;
+
 	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA, &cached_sector);
 	if (ret != PhatState_OK) return ret;
-
-	mbr = (Phat_MBR_p)cached_sector->data;
-
-	// Incase of there could be a MBR, read partition info and get to the partition's DBR
-	if (Phat_IsSectorMBR(mbr))
-	{
-		if (partition_index < 0 || partition_index >= 4) return PhatState_InvalidParameter;
-		if (!Phat_GetMBREntryInfo(&mbr->partition_entries[partition_index], &partition_start_LBA, &total_sectors)) return PhatState_PartitionTableError;
-		ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA, &cached_sector);
-		if (ret != PhatState_OK) return ret;
-	}
-	else if (Phat_IsSectorDBR((Phat_DBR_FAT32_p)cached_sector->data))
-	{
-		if (partition_index != 0) return PhatState_InvalidParameter;
-	}
-	else
-	{
-		return PhatState_NoMBR;
-	}
 
 	phat->write_enable = write_enable;
 

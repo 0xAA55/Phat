@@ -3247,6 +3247,47 @@ PhatState Phat_InitializeGPT(Phat_p phat, PhatBool_t force, PhatBool_t flush)
 	return ret;
 }
 
+PhatState Phat_GetFirstAndLastUsableLBA(Phat_p phat, LBA_p first, LBA_p last)
+{
+	PhatState ret;
+	Phat_SectorCache_p cached_sector;
+	Phat_MBR_p mbr;
+	PhatBool_t is_gpt;
+	Phat_GPT_Header_t header;
+
+	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
+	if (ret != PhatState_OK) return ret;
+
+	mbr = (Phat_MBR_p)&cached_sector->data;
+	if (!Phat_IsSectorMBR(mbr))
+	{
+		if (Phat_IsSectorDBR((Phat_DBR_FAT_p)&cached_sector->data))
+		{
+			if (first) *first = 0;
+			if (last) *last = phat->driver.device_capacity_in_sectors;
+			return PhatState_OK;
+		}
+		else
+		{
+			return PhatState_NoMBR;
+		}
+	}
+
+	ret = Phat_IsDiskGPT(phat, mbr, &is_gpt, &header);
+	if (ret != PhatState_OK) return ret;
+
+	if (is_gpt)
+	{
+		if (first) *first = header.first_usable_LBA;
+		if (last) *last = header.last_usable_LBA;
+		return PhatState_OK;
+	}
+
+	if (first) *first = 0x80;
+	if (last) *last = phat->driver.device_capacity_in_sectors;
+	return PhatState_OK;
+}
+
 PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partition_size_in_sectors, PhatBool_t bootable, PhatBool_t flush)
 {
 	PhatState ret;

@@ -36,7 +36,7 @@ Phat is a FAT filesystem API designed for embedded systems and cross-platform de
 
 First, review `BSP_phat.c` and `BSP_phat.h`. These files provide the low-level driver implementation that allows the PHAT API to access the storage device.
 
-You need to implement the following functions:
+You need to implement the following functions, NOTE: a block is a 512-byte sector
 
 ```C
 typedef int PhatBool_t;

@@ -188,49 +188,505 @@ typedef enum PhatState_e
 #define ATTRIB_DIRECTORY 0x10
 #define ATTRIB_ARCHIVE 0x20
 
-const char *Phat_StateToString(PhatState s);
-
+/**
+ * @brief Initialize the Phat filesystem context
+ *
+ * @param phat Pointer to the Phat context structure to initialize
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: phat is NULL
+ *   - PhatState_DriverError: Failed to open underlying storage device
+ *
+ * @note This function must be called before any other Phat operations.
+ * It initializes the disk driver and sets up internal structures.
+ */
 PhatState Phat_Init(Phat_p phat);
+
+/**
+ * @brief Deinitialize Phat context and close storage device
+ *
+ * @param phat Initialized Phat context
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: phat is NULL
+ *   - PhatState_WriteFail: Failed to flush cache during unmount
+ *
+ * @note Calls Phat_Unmount internally. Context becomes invalid after this call.
+ */
 PhatState Phat_DeInit(Phat_p phat);
 
+/**
+ * @brief Convert PhatState code to human-readable string
+ *
+ * @param s Error code to convert
+ * @return const char* Descriptive string
+ */
+const char *Phat_StateToString(PhatState s);
+
+/**
+ * @brief Navigate to parent directory by truncating the path
+ *
+ * @param path Path to modify (modified in-place)
+ *
+ * @note Removes the last path component:
+ * - "/a/b" → "/a"
+ * - "/a/b/" → "/a"
+ * - "/a" → "/"
+ * - "/" → "/" (no change)
+ *
+ * @example
+ * WChar_t path[] = L"/dir/subdir/file.txt";
+ * Phat_ToUpperDirectoryPath(path); // path becomes L"/dir/subdir"
+ */
 void Phat_ToUpperDirectoryPath(WChar_p path);
+
+/**
+ * @brief Normalize path by removing redundant elements
+ *
+ * @param path Path to normalize (modified in-place)
+ *
+ * @note Removes "./", "../", and redundant slashes.
+ * Example: "a/./b/../c" becomes "a/c".
+ */
 void Phat_NormalizePath(WChar_p path);
+
+/**
+ * @brief Extract filename from path
+ *
+ * @param path Full path
+ * @param name Buffer to store extracted filename
+ *
+ * @note Extracts the last component of the path.
+ * Example: "dir/sub/file.txt" -> "file.txt".
+ */
 void Phat_PathToName(WChar_p path, WChar_p name);
+
+/**
+ * @brief Extract filename from path (in-place)
+ *
+ * @param path Full path (modified to contain only filename)
+ *
+ * @note Same as Phat_PathToName but modifies the original path.
+ */
 void Phat_PathToNameInPlace(WChar_p path);
+
+/**
+ * @brief Check if filename contains valid characters
+ *
+ * @param filename Name to validate
+ * @return PhatBool_t Non-zero if valid, zero if invalid
+ *
+ * @note Checks for illegal characters: " * / : < > ? \ | and control chars.
+ * Also rejects "." and "..".
+ */
 PhatBool_t Phat_IsValidFilename(WChar_p filename);
 
+/**
+ * @brief Mount a filesystem from specified partition
+ *
+ * @param phat Initialized Phat context
+ * @param partition_index Partition number to mount (0-based)
+ * @param write_enable Enable write operations if non-zero
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: phat is NULL
+ *   - PhatState_NoMBR: No valid partition table found
+ *   - PhatState_FSNotFat: Partition doesn't contain FAT filesystem
+ *   - PhatState_PartitionIndexOutOfBound: Invalid partition index
+ *   - PhatState_ReadFail: Failed to read partition data
+ *
+ * @note If partition_index is 0 and no partition table exists,
+ *       the entire disk is treated as a single FAT partition.
+ */
 PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable);
+
+/**
+ * @brief Flush all cached sectors to storage
+ *
+ * @param phat Mounted Phat context
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: phat is NULL
+ *   - PhatState_WriteFail: Failed to write cached data
+ *
+ * @note This ensures all pending writes are committed to storage.
+ * Called automatically during Unmount/DeInit.
+ */
 PhatState Phat_FlushCache(Phat_p phat);
+
+/**
+ * @brief Unmount the filesystem
+ *
+ * @param phat Mounted Phat context
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: phat is NULL
+ *   - PhatState_WriteFail: Failed to flush cache
+ *
+ * @note Flushes cache and marks filesystem as clean.
+ * The context can be reused for mounting another partition.
+ */
 PhatState Phat_Unmount(Phat_p phat);
+
+/**
+ * @brief Set current date and time for file system operations
+ *
+ * @param phat Mounted Phat context
+ * @param cur_date Current date (can be NULL to keep existing)
+ * @param cur_time Current time (can be NULL to keep existing)
+ *
+ * @note This date/time will be used for:
+ * - File creation timestamps
+ * - File modification timestamps
+ * - Directory entry timestamps
+ *
+ * @example
+ * Phat_Date_t date = {2026, 1, 6};
+ * Phat_Time_t time = {14, 30, 0, 0};
+ * Phat_SetCurDateTime(phat, &date, &time);
+ */
 void Phat_SetCurDateTime(Phat_p phat, const Phat_Date_p cur_date, const Phat_Time_p cur_time);
 
+/**
+ * @brief Open root directory for iteration
+ *
+ * @param phat Mounted Phat context
+ * @param dir_info Directory info structure to initialize
+ *
+ * @note Prepares dir_info for iterating through root directory items.
+ * dir_info must be closed with Phat_CloseDir when done.
+ */
 void Phat_OpenRootDir(Phat_p phat, Phat_DirInfo_p dir_info);
+
+/**
+ * @brief Change current directory
+ *
+ * @param dir_info Current directory context
+ * @param dirname Subdirectory name to navigate to
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_DirectoryNotFound: Subdirectory doesn't exist
+ *   - PhatState_NotADirectory: Target exists but is not a directory
+ *
+ * @note Updates dir_info to point to the subdirectory.
+ * Similar to 'cd' command in shell.
+ */
 PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname);
 
+/**
+ * @brief Open directory at specified path
+ *
+ * @param phat Mounted Phat context
+ * @param path Directory path (UTF-16 encoded)
+ * @param dir_info Directory info structure to initialize
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_DirectoryNotFound: Path doesn't exist
+ *   - PhatState_NotADirectory: Path exists but is not a directory
+ *
+ * @example Phat_OpenDir(phat, L"SubDir/SubSubDir", &dir_info);
+ */
 PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info);
+
+/**
+ * @brief Get next item in opened directory
+ *
+ * @param dir_info Opened directory context
+ * @return PhatState
+ *   - PhatState_OK: Success, dir_info populated with next item
+ *   - PhatState_EndOfDirectory: No more items
+ *   - PhatState_InvalidParameter: dir_info is NULL or invalid
+ *   - PhatState_ReadFail: Failed to read directory data
+ *
+ * @note Populates dir_info with information about the next directory entry.
+ * LFN_name, attributes, file_size, first_cluster, etc. are updated.
+ */
 PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
+
+/**
+ * @brief Close directory context
+ *
+ * @param dir_info Directory context to close
+ *
+ * @note Releases resources associated with directory iteration.
+ * dir_info becomes invalid after this call.
+ */
 void Phat_CloseDir(Phat_DirInfo_p dir_info);
 
+/**
+ * @brief Open file for reading or writing
+ *
+ * @param phat Mounted Phat context
+ * @param path File path (UTF-16 encoded)
+ * @param readonly Open in read-only mode if non-zero
+ * @param file_info File info structure to initialize
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_FileNotFound: File doesn't exist (and readonly=1)
+ *   - PhatState_IsADirectory: Path exists but is a directory
+ *   - PhatState_ReadOnly: Write attempted on read-only filesystem
+ *
+ * @note If readonly=0 and file doesn't exist, it will be created.
+ * file_info must be closed with Phat_CloseFile when done.
+ */
 PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
+
+/**
+ * @brief Read data from opened file
+ *
+ * @param file_info Opened file context
+ * @param buffer Buffer to store read data
+ * @param bytes_to_read Number of bytes to read
+ * @param bytes_read Actual number of bytes read (can be NULL)
+ * @return PhatState
+ *   - PhatState_OK: Success, more data available
+ *   - PhatState_EndOfFile: Reached end of file
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_ReadFail: Storage read error
+ *
+ * @note Reading continues from current file pointer position.
+ * bytes_read indicates how many bytes were actually read.
+ */
 PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, size_t bytes_to_read, size_t *bytes_read);
+
+/**
+ * @brief Write data to opened file
+ *
+ * @param file_info Opened file context (must be writable)
+ * @param buffer Data to write
+ * @param bytes_to_write Number of bytes to write
+ * @param bytes_written Actual number of bytes written (can be NULL)
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_ReadOnly: File or filesystem is read-only
+ *   - PhatState_WriteFail: Storage write error
+ *   - PhatState_NotEnoughSpace: Insufficient disk space
+ *
+ * @note Writing continues from current file pointer position.
+ * File size is automatically extended if writing beyond current EOF.
+ */
 PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, size_t bytes_to_write, size_t *bytes_written);
+
+/**
+ * @brief Close file and update directory entry
+ *
+ * @param file_info File context to close
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: file_info is NULL
+ *   - PhatState_WriteFail: Failed to update directory entry
+ *
+ * @note Updates file metadata (size, modification time) in directory.
+ * file_info becomes invalid after this call.
+ */
 PhatState Phat_CloseFile(Phat_FileInfo_p file_info);
 
+/**
+ * @brief Set file pointer position
+ *
+ * @param file_info Opened file context
+ * @param position New position (0 = beginning of file)
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_EndOfFile: Position is beyond EOF (allowed)
+ *   - PhatState_InvalidParameter: file_info is NULL
+ *
+ * @note Subsequent read/write operations will start from this position.
+ */
 PhatState Phat_SeekFile(Phat_FileInfo_p file_info, FileSize_t position);
+
+/**
+ * @brief Get current file pointer position
+ *
+ * @param file_info Opened file context
+ * @param position Current position is stored here
+ */
 void Phat_GetFilePointer(Phat_FileInfo_p file_info, FileSize_t *position);
+
+/**
+ * @brief Get file size
+ *
+ * @param file_info Opened file context
+ * @param size File size is stored here
+ */
 void Phat_GetFileSize(Phat_FileInfo_p file_info, FileSize_t *size);
+
+/**
+ * @brief Check if file pointer is at end of file
+ *
+ * @param file_info Opened file context
+ * @return PhatBool_t Non-zero if at EOF, zero otherwise
+ */
 PhatBool_t Phat_IsEOF(Phat_FileInfo_p file_info);
 
+/**
+ * @brief Create new directory
+ *
+ * @param phat Mounted Phat context (must be writable)
+ * @param path Directory path to create
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_ReadOnly: Filesystem is read-only
+ *   - PhatState_DirectoryAlreadyExists: Directory already exists
+ *   - PhatState_FileAlreadyExists: Path exists as file
+ *   - PhatState_NameTooLong: Path too long
+ *   - PhatState_BadFileName: Invalid characters in name
+ *   - PhatState_NotEnoughSpace: Insufficient disk space
+ *
+ * @note Creates all intermediate directories if they don't exist (like mkdir -p).
+ */
 PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path);
+
+/**
+ * @brief Remove empty directory
+ *
+ * @param phat Mounted Phat context (must be writable)
+ * @param path Directory path to remove
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_ReadOnly: Filesystem is read-only
+ *   - PhatState_DirectoryNotFound: Directory doesn't exist
+ *   - PhatState_NotADirectory: Path exists but is not a directory
+ *   - PhatState_DirectoryNotEmpty: Directory contains files/subdirectories
+ *
+ * @note Directory must be empty before removal.
+ */
 PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path);
+
+/**
+ * @brief Delete file
+ *
+ * @param phat Mounted Phat context (must be writable)
+ * @param path File path to delete
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_ReadOnly: Filesystem is read-only
+ *   - PhatState_FileNotFound: File doesn't exist
+ *   - PhatState_IsADirectory: Path exists but is a directory
+ *
+ * @note Marks file as deleted and frees allocated clusters.
+ */
 PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path);
 
+/**
+ * @brief Rename file or directory
+ *
+ * @param phat Mounted Phat context (must be writable)
+ * @param path Old path
+ * @param new_name New name (in same directory)
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_ReadOnly: Filesystem is read-only
+ *   - PhatState_FileNotFound/DirectoryNotFound: Source doesn't exist
+ *   - PhatState_FileAlreadyExists/DirectoryAlreadyExists: Target name exists
+ *   - PhatState_BadFileName: Invalid characters in new name
+ *
+ * @note Only renames within the same directory. Use Phat_Move for moving between directories.
+ */
 PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name);
+
+/**
+ * @brief Move file or directory to different location
+ *
+ * @param phat Mounted Phat context (must be writable)
+ * @param oldpath Source path
+ * @param newpath Destination path
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_ReadOnly: Filesystem is read-only
+ *   - PhatState_FileNotFound/DirectoryNotFound: Source doesn't exist
+ *   - PhatState_FileAlreadyExists/DirectoryAlreadyExists: Target exists
+ *   - PhatState_InvalidPath: Attempt to move directory into its own subdirectory
+ *
+ * @note Can move files/directories between different directories.
+ */
 PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath);
 
+/**
+ * @brief Initialize disk with MBR partition table
+ *
+ * @param phat Phat context with opened storage device
+ * @param force Overwrite existing MBR if non-zero
+ * @param flush Write changes immediately if non-zero
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: phat is NULL
+ *   - PhatState_DiskAlreadyInitialized: MBR exists and force=0
+ *   - PhatState_WriteFail: Failed to write MBR
+ */
 PhatState Phat_InitializeMBR(Phat_p phat, PhatBool_t force, PhatBool_t flush);
+
+/**
+ * @brief Initialize disk with GPT partition table
+ *
+ * @param phat Phat context with opened storage device
+ * @param force Overwrite existing GPT if non-zero
+ * @param flush Write changes immediately if non-zero
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: phat is NULL
+ *   - PhatState_DiskAlreadyInitialized: GPT exists and force=0
+ *   - PhatState_WriteFail: Failed to write GPT structures
+ *   - PhatState_NeedBigLBA: Device requires 64-bit LBA addressing
+ */
 PhatState Phat_InitializeGPT(Phat_p phat, PhatBool_t force, PhatBool_t flush);
+
+/**
+ * @brief Get usable LBA range for creating partitions
+ *
+ * @param phat Phat context with opened storage device
+ * @param first First usable LBA address
+ * @param last Last usable LBA address
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: phat, first, or last is NULL
+ *   - PhatState_NoMBR: No valid partition table found
+ */
 PhatState Phat_GetFirstAndLastUsableLBA(Phat_p phat, LBA_p first, LBA_p last);
+
+/**
+ * @brief Create new partition
+ *
+ * @param phat Phat context with opened storage device
+ * @param partition_start Starting LBA of partition
+ * @param partition_size_in_sectors Size of partition in sectors
+ * @param bootable Mark partition as bootable if non-zero
+ * @param flush Write changes immediately if non-zero
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_NoMBR: No partition table exists
+ *   - PhatState_PartitionLBAIsIllegal: LBA outside usable range
+ *   - PhatState_PartitionOverlapped: Overlaps existing partition
+ *   - PhatState_NoFreePartitions: No free partition slots available
+ */
 PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partition_size_in_sectors, PhatBool_t bootable, PhatBool_t flush);
+
+/**
+ * @brief Format partition and mount it
+ *
+ * @param phat Phat context with opened storage device
+ * @param partition_index Partition to format
+ * @param FAT_bits FAT type (12, 16, 32, or 0 for auto-detect)
+ * @param root_dir_entry_count Root directory entries (0 for FAT32)
+ * @param volume_ID Volume ID (serial number)
+ * @param volume_label Volume label (NULL for default)
+ * @param flush Write changes immediately if non-zero
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_FSIsSubOptimal: Filesystem created but with suboptimal parameters
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_CannotMakeFS: Partition too small for FAT
+ *   - PhatState_PartitionTooSmall: Partition too small for selected FAT type
+ */
 PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, uint16_t root_dir_entry_count, uint32_t volume_ID, const char *volume_lable, PhatBool_t flush);
 #endif

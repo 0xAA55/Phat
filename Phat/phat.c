@@ -704,9 +704,9 @@ static PhatBool_t Phat_LBA_to_CHS(LBA_t LBA, Phat_CHS_p chs)
 	}
 	else
 	{
-		uint16_t cylinder = LBA / (heads_per_cylinder * sectors_per_track);
-		uint8_t head = (LBA / sectors_per_track) % heads_per_cylinder;
-		uint8_t sector = (LBA % sectors_per_track) + 1;
+		uint16_t cylinder = (uint16_t)(LBA / (heads_per_cylinder * sectors_per_track));
+		uint8_t head = (uint8_t)(LBA / sectors_per_track) % heads_per_cylinder;
+		uint8_t sector = (uint8_t)(LBA % sectors_per_track) + 1;
 
 		chs->head = head;
 		chs->sector = (uint8_t)(sector | ((cylinder >> 2) & 0xC0));
@@ -1074,7 +1074,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 		phat->data_start_LBA = phat->root_dir_start_LBA + (((LBA_t)dbr->root_dir_entry_count * 32) + (dbr->bytes_per_sector - 1)) / dbr->bytes_per_sector;
 		phat->bytes_per_sector = dbr->bytes_per_sector;
 		phat->sectors_per_cluster = dbr->sectors_per_cluster;
-		phat->num_diritems_in_a_sector = phat->bytes_per_sector / 32;
+		phat->num_diritems_in_a_sector = (uint8_t)(phat->bytes_per_sector / 32);
 		phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
 		phat->num_FAT_entries = (phat->FAT_size_in_sectors * phat->bytes_per_sector * 8) / phat->FAT_bits;
 		phat->FATs_are_same = 1;
@@ -1098,7 +1098,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 		phat->data_start_LBA = phat->root_dir_start_LBA;
 		phat->bytes_per_sector = dbr_32->bytes_per_sector;
 		phat->sectors_per_cluster = dbr_32->sectors_per_cluster;
-		phat->num_diritems_in_a_sector = phat->bytes_per_sector / 32;
+		phat->num_diritems_in_a_sector = (uint8_t)(phat->bytes_per_sector / 32);
 		phat->num_diritems_in_a_cluster = (phat->bytes_per_sector * phat->sectors_per_cluster) / 32;
 		phat->num_FAT_entries = (phat->FAT_size_in_sectors * phat->bytes_per_sector * 8) / phat->FAT_bits;
 		phat->FATs_are_same = !dbr_32->FATs_are_different;
@@ -1334,7 +1334,7 @@ static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write, 
 		break;
 		case 16:
 			if (write == 0x0FFFFFFF) write = 0xFFFF;
-			*(uint16_t *)&cached_sector->data[ent_offset_in_sector] = write;
+			*(uint16_t *)&cached_sector->data[ent_offset_in_sector] = (uint16_t)write;
 			break;
 		case 32:
 			*(uint32_t *)&cached_sector->data[ent_offset_in_sector] = write;
@@ -1751,7 +1751,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 				{
 					uint8_t ch = diritem.file_name_8_3[i];
 					if (diritem.case_info & CI_BASENAME_IS_LOWER)
-						ch = tolower(ch);
+						ch = (uint8_t)tolower(ch);
 					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(ch);
 				}
 				if (diritem.file_name_8_3[8] != ' ')
@@ -1768,7 +1768,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 				{
 					uint8_t ch = diritem.file_name_8_3[i];
 					if (diritem.case_info & CI_EXTENSION_IS_LOWER)
-						ch = tolower(ch);
+						ch = (uint8_t)tolower(ch);
 					dir_info->LFN_name[dir_info->LFN_length++] = Cp437_To_Unicode(ch);
 				}
 			}
@@ -2032,12 +2032,12 @@ static PhatBool_t Phat_IsFit83(WChar_p filename, uint8_t *sfn83, uint8_t *case_i
 	if (ext_has_lower) *case_info |= CI_EXTENSION_IS_LOWER;
 	if (dot < 0)
 	{
-		for(int i = 0; i < length; i++) sfn83[i] = toupper(filename[i]);
+		for(int i = 0; i < length; i++) sfn83[i] = (uint8_t)toupper(filename[i]);
 	}
 	else
 	{
-		for(int i = 0; i < dot; i++) sfn83[i] = toupper(filename[i]);
-		for(int i = dot + 1; i < length; i++) sfn83[8 + (i - (dot + 1))] = toupper(filename[i]);
+		for(int i = 0; i < dot; i++) sfn83[i] = (uint8_t)toupper(filename[i]);
+		for(int i = dot + 1; i < length; i++) sfn83[8 + (i - (dot + 1))] = (uint8_t)toupper(filename[i]);
 	}
 	return 1;
 }
@@ -2091,7 +2091,7 @@ static PhatState Phat_Gen83NameForLongFilename(Phat_DirInfo_p dir_info, const WC
 		// No extension name
 		for (size_t i = 0; i < 8 && longname[i]; i++)
 		{
-			WChar_t ch = toupper(longname[i]);
+			WChar_t ch = (WChar_t)toupper(longname[i]);
 			if (ch == '.') ch = '_';
 			sfn83[i] = (uint8_t)ch;
 		}
@@ -2102,13 +2102,13 @@ static PhatState Phat_Gen83NameForLongFilename(Phat_DirInfo_p dir_info, const WC
 		if (end > 8) end = 8;
 		for (size_t i = 0; i < end && longname[i]; i++)
 		{
-			WChar_t ch = toupper(longname[i]);
+			WChar_t ch = (WChar_t)toupper(longname[i]);
 			if (ch == '.') ch = '_';
 			sfn83[i] = (uint8_t)ch;
 		}
 		for (size_t i = 0; i < 3 && ext[i]; i++)
 		{
-			WChar_t ch = toupper(ext[i]);
+			WChar_t ch = (WChar_t)toupper(ext[i]);
 			sfn83[8 + i] = (uint8_t)ch;
 		}
 	}
@@ -3271,8 +3271,8 @@ PhatState Phat_GetFirstAndLastUsableLBA(Phat_p phat, LBA_p first, LBA_p last)
 
 	if (is_gpt)
 	{
-		if (first) *first = header.first_usable_LBA;
-		if (last) *last = header.last_usable_LBA;
+		if (first) *first = (LBA_t)header.first_usable_LBA;
+		if (last) *last = (LBA_t)header.last_usable_LBA;
 		return PhatState_OK;
 	}
 
@@ -3596,7 +3596,7 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 		return PhatState_InvalidParameter;
 	}
 
-	phat->FAT_bits = FAT_bits;
+	phat->FAT_bits = (uint8_t)FAT_bits;
 	phat->write_enable = 1;
 
 	if (FAT_bits == 12 && partition_start_LBA == 0 && partition_size_in_sectors == 2880)
@@ -3701,9 +3701,9 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 		dbr->reserved_sector_count = reserved_sector_count;
 		dbr->num_FATs = num_FATs;
 		dbr->root_dir_entry_count = root_dir_entry_count;
-		dbr->total_sectors_16 = partition_size_in_sectors <= 0xFFFF ? partition_size_in_sectors : 0;
+		dbr->total_sectors_16 = partition_size_in_sectors <= 0xFFFF ? (uint16_t)partition_size_in_sectors : 0;
 		dbr->media = media_type;
-		dbr->FAT_size = FAT_size;
+		dbr->FAT_size = (uint16_t)FAT_size;
 		dbr->sectors_per_track = sectors_per_track;
 		dbr->num_heads = num_heads;
 		dbr->hidden_sectors = (uint32_t)partition_start_LBA;
@@ -3754,7 +3754,7 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 		dbr->reserved_sector_count = reserved_sector_count;
 		dbr->num_FATs = num_FATs;
 		dbr->root_dir_entry_count = 0;
-		dbr->total_sectors_16 = partition_size_in_sectors <= 0xFFFF ? partition_size_in_sectors : 0;
+		dbr->total_sectors_16 = partition_size_in_sectors <= 0xFFFF ? (uint16_t)partition_size_in_sectors : 0;
 		dbr->media = media_type;
 		dbr->FAT_size_16 = 0;
 		dbr->sectors_per_track = sectors_per_track;

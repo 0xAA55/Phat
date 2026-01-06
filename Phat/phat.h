@@ -229,10 +229,10 @@ const char *Phat_StateToString(PhatState s);
  * @param path Path to modify (modified in-place)
  *
  * @note Removes the last path component:
- * - "/a/b" → "/a"
- * - "/a/b/" → "/a"
- * - "/a" → "/"
- * - "/" → "/" (no change)
+ * - "/a/b" -> "/a"
+ * - "/a/b/" -> "/a"
+ * - "/a" -> "/"
+ * - "/" -> "/" (no change)
  *
  * @example
  * WChar_t path[] = L"/dir/subdir/file.txt";

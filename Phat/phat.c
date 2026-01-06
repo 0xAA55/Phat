@@ -2730,7 +2730,6 @@ PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path)
 			return PhatState_DirectoryAlreadyExists;
 		else
 			return PhatState_FileAlreadyExists;
-		return PhatState_NotADirectory;
 	case PhatState_EndOfDirectory:
 	case PhatState_DirectoryNotFound:
 		break;

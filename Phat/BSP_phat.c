@@ -13,7 +13,7 @@
 __weak PhatBool_t BSP_OpenDevice(void *userdata);
 __weak PhatBool_t BSP_CloseDevice(void *userdata);
 __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
-__weak PhatBool_t BSP_WriteSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
+__weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
 
 #ifdef _WIN32
 #define INITGUID

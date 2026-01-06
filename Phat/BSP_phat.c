@@ -236,7 +236,7 @@ static PhatBool_t CreateVHD(uint64_t size)
 	memcpy(footer.cookie, "conectix", 8);
 	footer.features = BSwap32(2);
 	footer.format_version = BSwap32(0x00010000);
-	footer.data_offset = -1;
+	footer.data_offset = 0xFFFFFFFFFFFFFFFFULL;
 	footer.timestamp = BSwap32((uint32_t)(time(NULL) - 946684800));
 	footer.creator_app = 0x74616850; // 'Phat'
 	footer.creator_version = BSwap32(0x000A0000);

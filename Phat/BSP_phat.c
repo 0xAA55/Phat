@@ -393,6 +393,7 @@ static PhatBool_t UnmountVHD()
 
 __weak PhatBool_t BSP_OpenDevice(void *userdata)
 {
+	UNUSED(userdata);
 	UnmountVHD();
 	hDevice = CreateFileW(BSP_DeviceFilePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 	if (hDevice == INVALID_HANDLE_VALUE)
@@ -405,6 +406,7 @@ __weak PhatBool_t BSP_OpenDevice(void *userdata)
 
 __weak PhatBool_t BSP_CloseDevice(void *userdata)
 {
+	UNUSED(userdata);
 	if (hDevice != INVALID_HANDLE_VALUE)
 	{
 		CloseHandle(hDevice);
@@ -416,6 +418,7 @@ __weak PhatBool_t BSP_CloseDevice(void *userdata)
 
 __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
+	UNUSED(userdata);
 	DWORD num_read = 0;
 	LARGE_INTEGER Distance;
 	if (hDevice == INVALID_HANDLE_VALUE)
@@ -437,6 +440,7 @@ __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, voi
 
 __weak LBA_t BSP_GetDeviceCapacity(void *userdata)
 {
+	UNUSED(userdata);
 	LARGE_INTEGER file_size;
 
 	if (!GetFileSizeEx(hDevice, &file_size))
@@ -449,6 +453,7 @@ __weak LBA_t BSP_GetDeviceCapacity(void *userdata)
 
 __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
+	UNUSED(userdata);
 	DWORD num_wrote = 0;
 	LARGE_INTEGER Distance;
 	if (hDevice == INVALID_HANDLE_VALUE)
@@ -481,6 +486,7 @@ extern SD_HandleTypeDef hsd1;
 
 __weak PhatBool_t BSP_OpenDevice(void *userdata)
 {
+	UNUSED(userdata);
 #ifndef DISABLE_SD_INIT
 	if (HAL_SD_Init(&hsd1) == HAL_OK) return 1;
 	return 0;
@@ -491,6 +497,7 @@ __weak PhatBool_t BSP_OpenDevice(void *userdata)
 
 __weak PhatBool_t BSP_CloseDevice(void *userdata)
 {
+	UNUSED(userdata);
 #ifndef DISABLE_SD_INIT
 	if (HAL_SD_DeInit(&hsd1) == HAL_OK) return 1;
 	return 0;
@@ -501,18 +508,21 @@ __weak PhatBool_t BSP_CloseDevice(void *userdata)
 
 __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
+	UNUSED(userdata);
 	if (HAL_SD_ReadBlocks(&hsd1, (uint8_t *)buffer, LBA, num_blocks, SDMMC_SWDATATIMEOUT) == HAL_OK) return 1;
 	return 0;
 }
 
 __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
+	UNUSED(userdata);
 	if (HAL_SD_WriteBlocks(&hsd1, (const uint8_t *)buffer, LBA, num_blocks, SDMMC_SWDATATIMEOUT) == HAL_OK) return 1;
 	return 0;
 }
 
 __weak LBA_t BSP_GetDeviceCapacity(void *userdata)
 {
+	UNUSED(userdata);
 	HAL_SD_CardInfoTypeDef info;
 	if (HAL_SD_GetCardInfo(&hsd1, &info) != HAL_OK) return 0;
 	return info.BlockNbr;

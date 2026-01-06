@@ -997,7 +997,7 @@ static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flu
 	if (ret != PhatState_OK) return ret;
 	if (is_dirty) dirty_entry &= clean_bit - 1;
 	else dirty_entry |= clean_bit;
-	ret = Phat_WriteFAT(phat, 0, dirty_entry, 1);
+	ret = Phat_WriteFAT(phat, 0, dirty_entry, flush_immediately);
 	if (ret != PhatState_OK) return ret;
 
 	return PhatState_OK;

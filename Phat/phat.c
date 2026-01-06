@@ -2775,8 +2775,8 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 		ret = Phat_NextDirItem(&dir_info);
 		if (ret == PhatState_OK)
 		{
-			if (!Phat_Wcscmp(dir_info.LFN_name, L".")) continue;
-			if (!Phat_Wcscmp(dir_info.LFN_name, L".."))
+			if (!Phat_Wcscmp(dir_info.LFN_name, u".")) continue;
+			if (!Phat_Wcscmp(dir_info.LFN_name, u".."))
 			{
 				parent_dir_start_cluster = dir_info.first_cluster;
 				continue;
@@ -3013,7 +3013,7 @@ PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath)
 	for (;;)
 	{
 		if (dir_info2.dir_start_cluster == 0 || dir_info2.dir_start_cluster == 2) break;
-		ret = Phat_ChDir(&dir_info2, L"..");
+		ret = Phat_ChDir(&dir_info2, u"..");
 		if (ret == PhatState_DirectoryNotFound)
 		{
 			// A non root directory doesn't have a ".." error, this is a file system error
@@ -3368,7 +3368,7 @@ PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partiti
 				gpt_entry->starting_LBA = partition_start;
 				gpt_entry->ending_LBA = partition_end;
 				gpt_entry->attributes = 0;
-				Phat_Wcsncpy(gpt_entry->partition_name, L"Basic data partition", 36);
+				Phat_Wcsncpy(gpt_entry->partition_name, u"Basic data partition", 36);
 				ret = Phat_SetGPTEntry(phat, &header, i, gpt_entry);
 				if (ret != PhatState_OK) return ret;
 				break;

@@ -2964,6 +2964,7 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name)
 
 	dir_item.first_cluster_low = first_cluster & 0xFFFF;
 	dir_item.first_cluster_high = first_cluster >> 16;
+	dir_item.creation_time_tenths = ctime_tenths;
 	dir_item.file_size = file_size;
 	dir_item.creation_date = cdate;
 	dir_item.creation_time = ctime;
@@ -3077,6 +3078,7 @@ PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath)
 
 	dir_item.first_cluster_low = first_cluster & 0xFFFF;
 	dir_item.first_cluster_high = first_cluster >> 16;
+	dir_item.creation_time_tenths = ctime_tenths;
 	dir_item.file_size = file_size;
 	dir_item.creation_date = cdate;
 	dir_item.creation_time = ctime;

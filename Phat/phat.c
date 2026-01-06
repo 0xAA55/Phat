@@ -1161,20 +1161,29 @@ static int Phat_Cache_Compare_LBA(void const *a, void const *b)
 PhatState Phat_FlushCache(Phat_p phat)
 {
 	PhatState ret = PhatState_OK;
-	Phat_SectorCache_p pointers[PHAT_CACHED_SECTORS];
-
-	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++) pointers[i] = &phat->cache[i];
-	qsort(pointers, PHAT_CACHED_SECTORS, sizeof pointers[0], Phat_Cache_Compare_LBA);
+	Phat_SectorCache_p pointers[PHAT_CACHED_SECTORS] = { 0 };
+	size_t count = 0;
 
 	// Check parameters
 	if (!phat) return PhatState_InvalidParameter;
 
 	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
 	{
-		ret = Phat_InvalidateCachedSector(phat, pointers[i]);
-		if (ret != PhatState_OK) return ret;
+		Phat_SectorCache_p cache = &phat->cache[i];
+		if (Phat_IsCachedSectorValid(cache) && !Phat_IsCachedSectorSync(cache))
+			pointers[count ++ ] = &phat->cache[i];
 	}
-	return ret;
+	if (count)
+	{
+		qsort(pointers, count, sizeof pointers[0], Phat_Cache_Compare_LBA);
+
+		for (size_t i = 0; i < count; i++)
+		{
+			ret = Phat_WriteBackCachedSector(phat, pointers[i]);
+			if (ret != PhatState_OK) return ret;
+		}
+	}
+	return PhatState_OK;
 }
 
 PhatState Phat_Unmount(Phat_p phat)

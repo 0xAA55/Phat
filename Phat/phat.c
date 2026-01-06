@@ -1166,6 +1166,7 @@ PhatState Phat_FlushCache(Phat_p phat)
 
 	// Check parameters
 	if (!phat) return PhatState_InvalidParameter;
+	if (!phat->write_enable) return PhatState_OK;
 
 	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
 	{

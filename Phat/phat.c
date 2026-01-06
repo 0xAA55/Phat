@@ -560,12 +560,11 @@ static PhatState Phat_WriteBackCachedSector(Phat_p phat, Phat_SectorCache_p cach
 static PhatState Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
 {
 	PhatState ret;
-	if (Phat_IsCachedSectorValid(cached_sector) && !Phat_IsCachedSectorSync(cached_sector))
+	if (Phat_IsCachedSectorValid(cached_sector))
 	{
 		if (!phat->write_enable) return PhatState_InternalError;
 		ret = Phat_WriteBackCachedSector(phat, cached_sector);
 		if (ret != PhatState_OK) return ret;
-		Phat_SetCachedSectorSync(cached_sector);
 	}
 	cached_sector->usage &= ~SECTORCACHE_VALID;
 	return PhatState_OK;

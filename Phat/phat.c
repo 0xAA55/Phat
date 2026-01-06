@@ -856,7 +856,7 @@ static PhatState Phat_GetPartitionInfo(Phat_p phat, uint32_t partition_index, LB
 	LBA_t partition_size;
 	Phat_GPT_Header_t header;
 	uint32_t basic_data_index = 0;
-	Phat_GPT_Partition_Entry_p gpt_entry;
+	Phat_GPT_Partition_Entry_p gpt_entry = NULL;
 	PhatBool_t is_gpt;
 
 	ret = Phat_ReadSectorThroughCache(phat, 0, &cached_sector);
@@ -892,6 +892,7 @@ static PhatState Phat_GetPartitionInfo(Phat_p phat, uint32_t partition_index, LB
 			}
 		}
 
+		if (!gpt_entry) return PhatState_PartitionIndexOutOfBound;
 		if (gpt_entry->starting_LBA > 0xFFFFFFFF) return PhatState_NeedBigLBA;
 		if (gpt_entry->ending_LBA > 0xFFFFFFFF) return PhatState_NeedBigLBA;
 		*partition_start_LBA = (LBA_t)gpt_entry->starting_LBA;

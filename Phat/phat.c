@@ -1240,7 +1240,7 @@ static PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_t *read_ou
 	LBA_t fat_offset;
 	LBA_t fat_sector_LBA;
 	Phat_SectorCache_p cached_sector;
-	Cluster_t cluster_number;
+	Cluster_t cluster_number = 0;
 	size_t ent_offset_in_sector;
 
 	switch (phat->FAT_bits)
@@ -1845,7 +1845,7 @@ PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname)
 	PhatState ret;
 	WChar_p dirname_ptr;
 	WChar_p end_of_dirname = NULL;
-	size_t dirname_len;
+	size_t dirname_len = 0;
 
 	if (!dir_info || !dirname) return PhatState_InvalidParameter;
 
@@ -1912,7 +1912,7 @@ static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_inf
 	PhatState ret;
 	WChar_p dirname_ptr;
 	WChar_p end_of_dirname = NULL;
-	size_t dirname_len;
+	size_t dirname_len = 0;
 
 	if (!path) return PhatState_InvalidParameter;
 
@@ -3436,12 +3436,12 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 {
 	uint8_t num_FATs;
 	uint8_t media_type;
-	uint8_t sectors_per_cluster;
+	uint8_t sectors_per_cluster = 0;
 	uint16_t reserved_sector_count;
 	uint16_t sectors_per_track;
 	uint16_t num_heads;
 	uint16_t BIOS_drive_number;
-	uint32_t FAT_size;
+	uint32_t FAT_size = 0;
 	Cluster_t max_cluster;
 	Cluster_t partition_size_in_clusters;
 	SCluster_t free_clusters;
@@ -3578,18 +3578,24 @@ PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, 
 			FAT_bits = 32;
 			max_cluster = 0x0FFFFFF0;
 			if (root_dir_entry_count) return PhatState_InvalidParameter;
+			media_type = 0xF8;
+			BIOS_drive_number = 0x80;
 		}
 		else if (partition_size_in_sectors >= 8 * 0xFF0)
 		{
 			FAT_bits = 16;
 			max_cluster = 0xFFF0;
 			if (!root_dir_entry_count) root_dir_entry_count = 512;
+			media_type = 0xF8;
+			BIOS_drive_number = 0x80;
 		}
 		else
 		{
 			FAT_bits = 12;
 			max_cluster = 0xFF0;
 			if (!root_dir_entry_count) root_dir_entry_count = 224;
+			media_type = 0xF0;
+			BIOS_drive_number = 0x00;
 		}
 		break;
 	default:

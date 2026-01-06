@@ -4,6 +4,10 @@
 #ifndef __weak
 #define __weak
 #endif
+#elif defined(__GNUC__) || (defined (__ARMCC_VERSION) && (__ARMCC_VERSION >= 6010050))
+#ifndef __weak
+#define __weak __attribute__((weak))
+#endif
 #endif
 
 __weak PhatBool_t BSP_OpenDevice(void *userdata);

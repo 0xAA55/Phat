@@ -2,6 +2,11 @@
 #define _BSP_PHAT_ 1
 
 #include<stdint.h>
+#include<stddef.h>
+
+#ifndef UNUSED
+#define UNUSED(x) ((void)(x))
+#endif
 
 #ifdef PHAT_BIGLBA
 typedef uint64_t LBA_t, *LBA_p;

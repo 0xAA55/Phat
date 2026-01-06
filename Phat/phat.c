@@ -4,10 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifndef UNUSED
-#define UNUSED(x) ((void)(x))
-#endif
-
 #pragma pack(push, 1)
 typedef struct Phat_CHS_s
 {

@@ -3323,18 +3323,24 @@ PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partiti
 		Phat_GUID_t guid;
 		uint32_t crc = 0;
 		Phat_GPT_Header_p p_header;
+		PhatBool_t is_full = 1;
 		for (uint32_t i = 0; i < header.number_of_partition_entries; i++)
 		{
 			Phat_GPT_Partition_Entry_p gpt_entry;
 			ret = Phat_GetGPTEntry(phat, &header, i, &gpt_entry);
 			if (ret != PhatState_OK) return ret;
 
-			if (memcmp(&gpt_entry->partition_type_GUID, &GUID_empty, 16))
+			if (!memcmp(&gpt_entry->partition_type_GUID, &GUID_empty, 16))
+			{
+				is_full = 0;
+			}
+			else
 			{
 				// Non-empty item, check if the new partition overlaps with it
 				if (!(partition_end <= gpt_entry->starting_LBA || gpt_entry->ending_LBA <= partition_start)) return PhatState_PartitionOverlapped;
 			}
 		}
+		if (is_full) return PhatState_NoFreePartitions;
 		// Loop until found a unique GUID
 		for (;;)
 		{

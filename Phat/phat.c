@@ -1031,7 +1031,6 @@ PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 {
 	LBA_t partition_start_LBA = 0;
 	LBA_t partition_end_LBA = 0;
-	LBA_t total_sectors = 0;
 	LBA_t end_of_FAT_LBA;
 	PhatState ret = PhatState_OK;
 	Phat_SectorCache_p cached_sector;
@@ -1044,7 +1043,6 @@ PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable)
 
 	ret = Phat_GetPartitionInfo(phat, partition_index, &partition_start_LBA, &partition_end_LBA);
 	if (ret != PhatState_OK) return ret;
-	total_sectors = partition_end_LBA - partition_start_LBA;
 
 	ret = Phat_ReadSectorThroughCache(phat, partition_start_LBA, &cached_sector);
 	if (ret != PhatState_OK) return ret;
@@ -1227,7 +1225,6 @@ static PhatState Phat_WipeCluster(Phat_p phat, Cluster_t cluster)
 	for (LBA_t i = 0; i < phat->sectors_per_cluster; i++)
 	{
 		LBA_t LBA = cluster_LBA + i;
-		PhatBool_t wiped = 0;
 		ret = Phat_WriteSectorsWithoutCache(phat, LBA, 1, empty_sector);
 		if (ret != PhatState_OK) return ret;
 	}
@@ -1681,7 +1678,6 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 	Phat_LFN_Entry_p lfnitem;
 	PhatBool_t no_checksum = 1;
 	uint8_t checksum;
-	Phat_p phat = dir_info->phat;
 
 	// Check parameters
 	if (!dir_info) return PhatState_InvalidParameter;
@@ -2763,7 +2759,6 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 {
 	Phat_DirInfo_t dir_info;
 	PhatState ret;
-	size_t name_len;
 	Cluster_t dir_start_cluster;
 	Cluster_t parent_dir_start_cluster = 0;
 	Cluster_t first_entry = 0;
@@ -2793,7 +2788,6 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path)
 		else goto FailExit;
 	}
 	Phat_PathToName(path, phat->filename_buffer);
-	name_len = Phat_Wcslen(phat->filename_buffer);
 
 	if (parent_dir_start_cluster == 0) parent_dir_start_cluster = phat->root_dir_cluster;
 

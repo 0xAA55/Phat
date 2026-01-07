@@ -1879,6 +1879,7 @@ PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname)
 				Cluster_t dir_cluster;
 				if ((dir_info->attributes & ATTRIB_DIRECTORY) == 0) return PhatState_NotADirectory;
 				dir_cluster = dir_info->first_cluster;
+				if (dir_info->phat->FAT_bits == 32 && dir_cluster == 0) dir_cluster = 2;
 				dir_info->dir_start_cluster = dir_cluster;
 				dir_info->dir_current_cluster = dir_cluster;
 				dir_info->dir_current_cluster_index = 0;

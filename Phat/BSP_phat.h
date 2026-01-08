@@ -24,6 +24,10 @@ typedef int32_t SLBA_t, *SLBA_p;
 #define SDMMC_DATATIMEOUT 5000000
 #endif
 
+#ifndef PHAT_NO_DMA
+#define PHAT_USE_DMA 1
+#endif
+
 typedef uint8_t PhatBool_t, *PhatBool_p;
 
 typedef PhatBool_t(*FnOpenDevice)(void *userdata);

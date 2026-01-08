@@ -483,6 +483,10 @@ __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_bloc
 #include "stm32h7xx_hal.h"
 
 extern SD_HandleTypeDef hsd1;
+#if PHAT_USE_DMA
+volatile int SD1_TxCplt;
+volatile int SD1_RxCplt;
+#endif
 
 __weak PhatBool_t BSP_OpenDevice(void *userdata)
 {
@@ -506,17 +510,69 @@ __weak PhatBool_t BSP_CloseDevice(void *userdata)
 #endif
 }
 
+#if PHAT_USE_DMA
+void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
+{
+	if (hsd == &hsd1)
+	{
+		SD1_TxCplt = 1;
+	}
+}
+
+void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
+{
+	if (hsd == &hsd1)
+	{
+		SD1_RxCplt = 1;
+	}
+}
+#endif
+
 __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
 	UNUSED(userdata);
+#if PHAT_USE_DMA
+	uint32_t timeout = HAL_GetTick() + SDMMC_SWDATATIMEOUT;
+	SD1_RxCplt = 0;
+	SCB_CleanDCache_by_Addr((uint32_t*)buffer, num_blocks * 512);
+	if (HAL_SD_ReadBlocks_DMA(&hsd1, (uint8_t *)buffer, LBA, num_blocks) == HAL_OK)
+	{
+		for (;;)
+		{
+			if (SD1_RxCplt)
+			{
+				SCB_InvalidateDCache_by_Addr(buffer, num_blocks * 512);
+				return 1;
+			}
+			if (HAL_GetTick() <= timeout) __WFI();
+			else return 0;
+		}
+	}
+#else
 	if (HAL_SD_ReadBlocks(&hsd1, (uint8_t *)buffer, LBA, num_blocks, SDMMC_SWDATATIMEOUT) == HAL_OK) return 1;
+#endif
 	return 0;
 }
 
 __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
+#if PHAT_USE_DMA
+	uint32_t timeout = HAL_GetTick() + SDMMC_SWDATATIMEOUT;
 	UNUSED(userdata);
+	SD1_TxCplt = 0;
+	SCB_CleanDCache_by_Addr((uint32_t*)buffer, num_blocks * 512);
+	if (HAL_SD_WriteBlocks_DMA(&hsd1, (const uint8_t *)buffer, LBA, num_blocks) == HAL_OK)
+	{
+		for (;;)
+		{
+			if (SD1_TxCplt) return 1;
+			if (HAL_GetTick() <= timeout)__WFI();
+			else return 0;
+		}
+	}
+#else
 	if (HAL_SD_WriteBlocks(&hsd1, (const uint8_t *)buffer, LBA, num_blocks, SDMMC_SWDATATIMEOUT) == HAL_OK) return 1;
+#endif
 	return 0;
 }
 

@@ -418,6 +418,25 @@ void Phat_CloseDir(Phat_DirInfo_p dir_info);
 /**
  * @brief Open file for reading or writing
  *
+ * @param dir_info Opened directory context
+ * @param path File path (UTF-16 encoded)
+ * @param readonly Open in read-only mode if non-zero
+ * @param file_info File info structure to initialize
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_InvalidParameter: Invalid parameters
+ *   - PhatState_FileNotFound: File doesn't exist (and readonly=1)
+ *   - PhatState_IsADirectory: Path exists but is a directory
+ *   - PhatState_ReadOnly: Write attempted on read-only filesystem
+ *
+ * @note If readonly=0 and file doesn't exist, it will be created.
+ * file_info must be closed with Phat_CloseFile when done.
+ */
+PhatState Phat_OpenFile(Phat_DirInfo_p dir_info, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
+
+/**
+ * @brief Open file from root dir for reading or writing
+ *
  * @param phat Mounted Phat context
  * @param path File path (UTF-16 encoded)
  * @param readonly Open in read-only mode if non-zero
@@ -432,7 +451,7 @@ void Phat_CloseDir(Phat_DirInfo_p dir_info);
  * @note If readonly=0 and file doesn't exist, it will be created.
  * file_info must be closed with Phat_CloseFile when done.
  */
-PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
+PhatState Phat_OpenFileFromRoot(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
 
 /**
  * @brief Read data from opened file

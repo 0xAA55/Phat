@@ -2372,22 +2372,18 @@ static PhatState Phat_CreateNewItemInDir(Phat_DirInfo_p dir_info, const WChar_p 
 	return PhatState_OK;
 }
 
-PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
+PhatState Phat_OpenFile(Phat_DirInfo_p dir_info, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
 {
-	Phat_DirInfo_p dir_info;
+	Phat_p phat;
 	PhatState ret;
 	WChar_p p;
 	WChar_p ch;
 	size_t dirname_len;
 
 	// Check parameters
-	if (!phat || !path || !file_info) return PhatState_InvalidParameter;
-	file_info->phat = phat;
-	if (!readonly && !phat->write_enable) return PhatState_ReadOnly;
+	if (!dir_info || !path || !file_info) return PhatState_InvalidParameter;
 
-	dir_info = &file_info->file_item;
-	Phat_OpenRootDir(phat, dir_info);
-
+	phat = dir_info->phat;
 	ret = Phat_FindItem(phat, path, dir_info, &p);
 	if (ret == PhatState_EndOfDirectory)
 	{
@@ -2440,6 +2436,20 @@ PhatState Phat_OpenFile(Phat_p phat, const WChar_p path, PhatBool_t readonly, Ph
 	file_info->cur_cluster_index = 0;
 	file_info->sector_buffer_is_valid = 0;
 	return PhatState_OK;
+}
+
+PhatState Phat_OpenFileFromRoot(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info)
+{
+	Phat_DirInfo_p dir_info;
+
+	// Check parameters
+	if (!phat || !path || !file_info) return PhatState_InvalidParameter;
+	file_info->phat = phat;
+	if (!readonly && !phat->write_enable) return PhatState_ReadOnly;
+
+	dir_info = &file_info->file_item;
+	Phat_OpenRootDir(phat, dir_info);
+	return Phat_OpenFile(dir_info, path, readonly, file_info);
 }
 
 static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info, PhatBool_t allocate_new_sectors)

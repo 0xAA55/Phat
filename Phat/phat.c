@@ -2384,6 +2384,8 @@ PhatState Phat_OpenFile(Phat_DirInfo_p dir_info, const WChar_p path, PhatBool_t 
 	if (!dir_info || !path || !file_info) return PhatState_InvalidParameter;
 
 	phat = dir_info->phat;
+	memset(file_info, 0, sizeof * file_info);
+	file_info->phat = phat;
 	ret = Phat_FindItem(phat, path, dir_info, &p);
 	if (ret == PhatState_EndOfDirectory)
 	{

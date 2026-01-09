@@ -2541,7 +2541,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, size_t bytes_to
 		uint8_t continuous_sectors;
 		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 0);
 		if (ret != PhatState_OK) return ret;
-		if (FPLBA == file_info->sector_buffer_LBA)
+		if (FPLBA == file_info->sector_buffer_LBA && file_info->sector_buffer_is_valid)
 		{
 			continuous_sectors = 1;
 			memcpy(buffer, file_info->sector_buffer, 512);
@@ -2639,7 +2639,7 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, size_t b
 		uint8_t continuous_sectors;
 		ret = Phat_GetCurFilePointerLBA(file_info, &FPLBA, 1);
 		if (ret != PhatState_OK) return ret;
-		if (FPLBA == file_info->sector_buffer_LBA)
+		if (FPLBA == file_info->sector_buffer_LBA && file_info->sector_buffer_is_valid)
 		{
 			memcpy(file_info->sector_buffer, buffer, 512);
 		}

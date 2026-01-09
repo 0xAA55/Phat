@@ -2709,7 +2709,7 @@ PhatState Phat_CloseFile(Phat_FileInfo_p file_info)
 	// Check parameters
 	if (!file_info) return PhatState_InvalidParameter;
 
-	if (phat->write_enable)
+	if (phat && phat->write_enable)
 	{
 		ret = Phat_GetDirItem(dir_info, &diritem);
 		if (ret != PhatState_OK) return ret;

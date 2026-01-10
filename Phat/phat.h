@@ -40,6 +40,10 @@
 #define PHAT_DEFAULT_SECOND 0
 #endif
 
+#ifndef PHAT_ALIGNMENT
+#define PHAT_ALIGNMENT __attribute__((aligned(4)))
+#endif
+
 typedef uint16_t WChar_t, *WChar_p;
 typedef uint32_t Cluster_t, *Cluster_p;
 typedef int32_t SCluster_t, *SCluster_p;
@@ -59,7 +63,7 @@ typedef struct Phat_Date_s
 	uint16_t year;
 	uint8_t month;
 	uint8_t day;
-}Phat_Date_t, *Phat_Date_p;
+}PHAT_ALIGNMENT Phat_Date_t, *Phat_Date_p;
 
 typedef struct Phat_Time_s
 {
@@ -67,7 +71,7 @@ typedef struct Phat_Time_s
 	uint8_t minutes;
 	uint8_t seconds;
 	uint16_t milliseconds;
-}Phat_Time_t, *Phat_Time_p;
+}PHAT_ALIGNMENT Phat_Time_t, *Phat_Time_p;
 
 typedef struct Phat_s
 {
@@ -101,7 +105,7 @@ typedef struct Phat_s
 	Cluster_t next_free_cluster;
 	Cluster_t max_valid_cluster;
 	Cluster_t end_of_cluster_chain;
-}Phat_t, *Phat_p;
+}PHAT_ALIGNMENT Phat_t, *Phat_p;
 
 typedef struct Phat_DirInfo_s
 {
@@ -122,7 +126,7 @@ typedef struct Phat_DirInfo_s
 	Cluster_t first_cluster;
 	WChar_t LFN_name[MAX_LFN + 1];
 	uint16_t LFN_length;
-}Phat_DirInfo_t, *Phat_DirInfo_p;
+}PHAT_ALIGNMENT Phat_DirInfo_t, *Phat_DirInfo_p;
 
 typedef struct Phat_FileInfo_s
 {
@@ -139,7 +143,7 @@ typedef struct Phat_FileInfo_s
 	PhatBool_t sector_buffer_is_valid;
 	uint8_t sector_buffer[512];
 	LBA_t sector_buffer_LBA;
-}Phat_FileInfo_t, *Phat_FileInfo_p;
+}PHAT_ALIGNMENT Phat_FileInfo_t, *Phat_FileInfo_p;
 
 typedef enum PhatState_e
 {

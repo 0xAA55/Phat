@@ -593,7 +593,6 @@ __weak Phat_Disk_Driver_t Phat_InitDriver(void *userdata)
 	ret.fn_read_sector = BSP_ReadSector;
 	ret.fn_write_sector = BSP_WriteSector;
 	ret.fn_close_device = BSP_CloseDevice;
-	ret.device_capacity_in_sectors = 0;
 	return ret;
 }
 
@@ -612,6 +611,7 @@ __weak PhatBool_t Phat_OpenDevice(Phat_Disk_Driver_p driver)
 			driver->fn_close_device(driver->userdata);
 			return 0;
 		}
+		driver->device_opended = 1;
 		return 1;
 	}
 	return 0;

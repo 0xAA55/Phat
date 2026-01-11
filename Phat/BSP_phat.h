@@ -55,4 +55,8 @@ PhatBool_t Phat_CloseDevice(Phat_Disk_Driver_p driver);
 PhatBool_t Phat_ReadSector(Phat_Disk_Driver_p driver, void *buffer, LBA_t LBA, size_t num_blocks);
 PhatBool_t Phat_WriteSector(Phat_Disk_Driver_p driver, const void *buffer, LBA_t LBA, size_t num_blocks);
 
+#ifdef _MSC_VER
+#define PHAT_ALIGNMENT
+#endif
+
 #endif

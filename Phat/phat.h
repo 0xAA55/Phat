@@ -44,6 +44,10 @@
 #define PHAT_ALIGNMENT __attribute__((aligned(4)))
 #endif
 
+#ifndef PHAT_FUNC
+#define PHAT_FUNC
+#endif
+
 typedef uint16_t WChar_t, *WChar_p;
 typedef uint32_t Cluster_t, *Cluster_p;
 typedef int32_t SCluster_t, *SCluster_p;
@@ -204,7 +208,7 @@ typedef enum PhatState_e
  * @note This function must be called before any other Phat operations.
  * It initializes the disk driver and sets up internal structures.
  */
-PhatState Phat_Init(Phat_p phat);
+PHAT_FUNC PhatState Phat_Init(Phat_p phat);
 
 /**
  * @brief Deinitialize Phat context and close storage device
@@ -217,7 +221,7 @@ PhatState Phat_Init(Phat_p phat);
  *
  * @note Calls Phat_Unmount internally. Context becomes invalid after this call.
  */
-PhatState Phat_DeInit(Phat_p phat);
+PHAT_FUNC PhatState Phat_DeInit(Phat_p phat);
 
 /**
  * @brief Convert PhatState code to human-readable string
@@ -225,7 +229,7 @@ PhatState Phat_DeInit(Phat_p phat);
  * @param s Error code to convert
  * @return const char* Descriptive string
  */
-const char *Phat_StateToString(PhatState s);
+PHAT_FUNC const char *Phat_StateToString(PhatState s);
 
 /**
  * @brief Navigate to parent directory by truncating the path
@@ -242,7 +246,7 @@ const char *Phat_StateToString(PhatState s);
  * WChar_t path[] = L"/dir/subdir/file.txt";
  * Phat_ToUpperDirectoryPath(path); // path becomes L"/dir/subdir"
  */
-void Phat_ToUpperDirectoryPath(WChar_p path);
+PHAT_FUNC void Phat_ToUpperDirectoryPath(WChar_p path);
 
 /**
  * @brief Normalize path by removing redundant elements
@@ -252,7 +256,7 @@ void Phat_ToUpperDirectoryPath(WChar_p path);
  * @note Removes "./", "../", and redundant slashes.
  * Example: "a/./b/../c" becomes "a/c".
  */
-void Phat_NormalizePath(WChar_p path);
+PHAT_FUNC void Phat_NormalizePath(WChar_p path);
 
 /**
  * @brief Extract filename from path
@@ -263,7 +267,7 @@ void Phat_NormalizePath(WChar_p path);
  * @note Extracts the last component of the path.
  * Example: "dir/sub/file.txt" -> "file.txt".
  */
-void Phat_PathToName(WChar_p path, WChar_p name);
+PHAT_FUNC void Phat_PathToName(WChar_p path, WChar_p name);
 
 /**
  * @brief Extract filename from path (in-place)
@@ -272,7 +276,7 @@ void Phat_PathToName(WChar_p path, WChar_p name);
  *
  * @note Same as Phat_PathToName but modifies the original path.
  */
-void Phat_PathToNameInPlace(WChar_p path);
+PHAT_FUNC void Phat_PathToNameInPlace(WChar_p path);
 
 /**
  * @brief Check if filename contains valid characters
@@ -283,7 +287,7 @@ void Phat_PathToNameInPlace(WChar_p path);
  * @note Checks for illegal characters: " * / : < > ? \ | and control chars.
  * Also rejects "." and "..".
  */
-PhatBool_t Phat_IsValidFilename(WChar_p filename);
+PHAT_FUNC PhatBool_t Phat_IsValidFilename(WChar_p filename);
 
 /**
  * @brief Mount a filesystem from specified partition
@@ -302,7 +306,7 @@ PhatBool_t Phat_IsValidFilename(WChar_p filename);
  * @note If partition_index is 0 and no partition table exists,
  *       the entire disk is treated as a single FAT partition.
  */
-PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable);
+PHAT_FUNC PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable);
 
 /**
  * @brief Flush all cached sectors to storage
@@ -316,7 +320,7 @@ PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable);
  * @note This ensures all pending writes are committed to storage.
  * Called automatically during Unmount/DeInit.
  */
-PhatState Phat_FlushCache(Phat_p phat);
+PHAT_FUNC PhatState Phat_FlushCache(Phat_p phat);
 
 /**
  * @brief Unmount the filesystem
@@ -330,7 +334,7 @@ PhatState Phat_FlushCache(Phat_p phat);
  * @note Flushes cache and marks filesystem as clean.
  * The context can be reused for mounting another partition.
  */
-PhatState Phat_Unmount(Phat_p phat);
+PHAT_FUNC PhatState Phat_Unmount(Phat_p phat);
 
 /**
  * @brief Set current date and time for file system operations
@@ -349,7 +353,7 @@ PhatState Phat_Unmount(Phat_p phat);
  * Phat_Time_t time = {14, 30, 0, 0};
  * Phat_SetCurDateTime(phat, &date, &time);
  */
-void Phat_SetCurDateTime(Phat_p phat, const Phat_Date_p cur_date, const Phat_Time_p cur_time);
+PHAT_FUNC void Phat_SetCurDateTime(Phat_p phat, const Phat_Date_p cur_date, const Phat_Time_p cur_time);
 
 /**
  * @brief Open root directory for iteration
@@ -360,7 +364,7 @@ void Phat_SetCurDateTime(Phat_p phat, const Phat_Date_p cur_date, const Phat_Tim
  * @note Prepares dir_info for iterating through root directory items.
  * dir_info must be closed with Phat_CloseDir when done.
  */
-void Phat_OpenRootDir(Phat_p phat, Phat_DirInfo_p dir_info);
+PHAT_FUNC void Phat_OpenRootDir(Phat_p phat, Phat_DirInfo_p dir_info);
 
 /**
  * @brief Change current directory
@@ -376,7 +380,7 @@ void Phat_OpenRootDir(Phat_p phat, Phat_DirInfo_p dir_info);
  * @note Updates dir_info to point to the subdirectory.
  * Similar to 'cd' command in shell.
  */
-PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname);
+PHAT_FUNC PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname);
 
 /**
  * @brief Open directory at specified path
@@ -392,7 +396,7 @@ PhatState Phat_ChDir(Phat_DirInfo_p dir_info, const WChar_p dirname);
  *
  * @example Phat_OpenDir(phat, L"SubDir/SubSubDir", &dir_info);
  */
-PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info);
+PHAT_FUNC PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info);
 
 /**
  * @brief Get next item in opened directory
@@ -407,7 +411,7 @@ PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p dir_info)
  * @note Populates dir_info with information about the next directory entry.
  * LFN_name, attributes, file_size, first_cluster, etc. are updated.
  */
-PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
+PHAT_FUNC PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
 
 /**
  * @brief Close directory context
@@ -417,7 +421,7 @@ PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info);
  * @note Releases resources associated with directory iteration.
  * dir_info becomes invalid after this call.
  */
-void Phat_CloseDir(Phat_DirInfo_p dir_info);
+PHAT_FUNC void Phat_CloseDir(Phat_DirInfo_p dir_info);
 
 /**
  * @brief Open file for reading or writing
@@ -436,7 +440,7 @@ void Phat_CloseDir(Phat_DirInfo_p dir_info);
  * @note If readonly=0 and file doesn't exist, it will be created.
  * file_info must be closed with Phat_CloseFile when done.
  */
-PhatState Phat_OpenFile(Phat_DirInfo_p dir_info, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
+PHAT_FUNC PhatState Phat_OpenFile(Phat_DirInfo_p dir_info, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
 
 /**
  * @brief Open file from root dir for reading or writing
@@ -455,7 +459,7 @@ PhatState Phat_OpenFile(Phat_DirInfo_p dir_info, const WChar_p path, PhatBool_t 
  * @note If readonly=0 and file doesn't exist, it will be created.
  * file_info must be closed with Phat_CloseFile when done.
  */
-PhatState Phat_OpenFileFromRoot(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
+PHAT_FUNC PhatState Phat_OpenFileFromRoot(Phat_p phat, const WChar_p path, PhatBool_t readonly, Phat_FileInfo_p file_info);
 
 /**
  * @brief Read data from opened file
@@ -473,7 +477,7 @@ PhatState Phat_OpenFileFromRoot(Phat_p phat, const WChar_p path, PhatBool_t read
  * @note Reading continues from current file pointer position.
  * bytes_read indicates how many bytes were actually read.
  */
-PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, size_t bytes_to_read, size_t *bytes_read);
+PHAT_FUNC PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, size_t bytes_to_read, size_t *bytes_read);
 
 /**
  * @brief Write data to opened file
@@ -492,7 +496,7 @@ PhatState Phat_ReadFile(Phat_FileInfo_p file_info, void *buffer, size_t bytes_to
  * @note Writing continues from current file pointer position.
  * File size is automatically extended if writing beyond current EOF.
  */
-PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, size_t bytes_to_write, size_t *bytes_written);
+PHAT_FUNC PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, size_t bytes_to_write, size_t *bytes_written);
 
 /**
  * @brief Close file and update directory entry
@@ -506,7 +510,7 @@ PhatState Phat_WriteFile(Phat_FileInfo_p file_info, const void *buffer, size_t b
  * @note Updates file metadata (size, modification time) in directory.
  * file_info becomes invalid after this call.
  */
-PhatState Phat_CloseFile(Phat_FileInfo_p file_info);
+PHAT_FUNC PhatState Phat_CloseFile(Phat_FileInfo_p file_info);
 
 /**
  * @brief Set file pointer position
@@ -520,7 +524,7 @@ PhatState Phat_CloseFile(Phat_FileInfo_p file_info);
  *
  * @note Subsequent read/write operations will start from this position.
  */
-PhatState Phat_SeekFile(Phat_FileInfo_p file_info, FileSize_t position);
+PHAT_FUNC PhatState Phat_SeekFile(Phat_FileInfo_p file_info, FileSize_t position);
 
 /**
  * @brief Get current file pointer position
@@ -528,7 +532,7 @@ PhatState Phat_SeekFile(Phat_FileInfo_p file_info, FileSize_t position);
  * @param file_info Opened file context
  * @param position Current position is stored here
  */
-void Phat_GetFilePointer(Phat_FileInfo_p file_info, FileSize_t *position);
+PHAT_FUNC void Phat_GetFilePointer(Phat_FileInfo_p file_info, FileSize_t *position);
 
 /**
  * @brief Get file size
@@ -536,7 +540,7 @@ void Phat_GetFilePointer(Phat_FileInfo_p file_info, FileSize_t *position);
  * @param file_info Opened file context
  * @param size File size is stored here
  */
-void Phat_GetFileSize(Phat_FileInfo_p file_info, FileSize_t *size);
+PHAT_FUNC void Phat_GetFileSize(Phat_FileInfo_p file_info, FileSize_t *size);
 
 /**
  * @brief Check if file pointer is at end of file
@@ -544,7 +548,7 @@ void Phat_GetFileSize(Phat_FileInfo_p file_info, FileSize_t *size);
  * @param file_info Opened file context
  * @return PhatBool_t Non-zero if at EOF, zero otherwise
  */
-PhatBool_t Phat_IsEOF(Phat_FileInfo_p file_info);
+PHAT_FUNC PhatBool_t Phat_IsEOF(Phat_FileInfo_p file_info);
 
 /**
  * @brief Create new directory
@@ -563,7 +567,7 @@ PhatBool_t Phat_IsEOF(Phat_FileInfo_p file_info);
  *
  * @note Creates all intermediate directories if they don't exist (like mkdir -p).
  */
-PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path);
+PHAT_FUNC PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path);
 
 /**
  * @brief Remove empty directory
@@ -580,7 +584,7 @@ PhatState Phat_CreateDirectory(Phat_p phat, const WChar_p path);
  *
  * @note Directory must be empty before removal.
  */
-PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path);
+PHAT_FUNC PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path);
 
 /**
  * @brief Delete file
@@ -596,7 +600,7 @@ PhatState Phat_RemoveDirectory(Phat_p phat, const WChar_p path);
  *
  * @note Marks file as deleted and frees allocated clusters.
  */
-PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path);
+PHAT_FUNC PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path);
 
 /**
  * @brief Rename file or directory
@@ -614,7 +618,7 @@ PhatState Phat_DeleteFile(Phat_p phat, const WChar_p path);
  *
  * @note Only renames within the same directory. Use Phat_Move for moving between directories.
  */
-PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name);
+PHAT_FUNC PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name);
 
 /**
  * @brief Move file or directory to different location
@@ -632,7 +636,7 @@ PhatState Phat_Rename(Phat_p phat, const WChar_p path, const WChar_p new_name);
  *
  * @note Can move files/directories between different directories.
  */
-PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath);
+PHAT_FUNC PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath);
 
 /**
  * @brief Initialize disk with MBR partition table
@@ -646,7 +650,7 @@ PhatState Phat_Move(Phat_p phat, const WChar_p oldpath, const WChar_p newpath);
  *   - PhatState_DiskAlreadyInitialized: MBR exists and force=0
  *   - PhatState_WriteFail: Failed to write MBR
  */
-PhatState Phat_InitializeMBR(Phat_p phat, PhatBool_t force, PhatBool_t flush);
+PHAT_FUNC PhatState Phat_InitializeMBR(Phat_p phat, PhatBool_t force, PhatBool_t flush);
 
 /**
  * @brief Initialize disk with GPT partition table
@@ -661,7 +665,7 @@ PhatState Phat_InitializeMBR(Phat_p phat, PhatBool_t force, PhatBool_t flush);
  *   - PhatState_WriteFail: Failed to write GPT structures
  *   - PhatState_NeedBigLBA: Device requires 64-bit LBA addressing
  */
-PhatState Phat_InitializeGPT(Phat_p phat, PhatBool_t force, PhatBool_t flush);
+PHAT_FUNC PhatState Phat_InitializeGPT(Phat_p phat, PhatBool_t force, PhatBool_t flush);
 
 /**
  * @brief Get usable LBA range for creating partitions
@@ -674,7 +678,7 @@ PhatState Phat_InitializeGPT(Phat_p phat, PhatBool_t force, PhatBool_t flush);
  *   - PhatState_InvalidParameter: phat, first, or last is NULL
  *   - PhatState_NoMBR: No valid partition table found
  */
-PhatState Phat_GetFirstAndLastUsableLBA(Phat_p phat, LBA_p first, LBA_p last);
+PHAT_FUNC PhatState Phat_GetFirstAndLastUsableLBA(Phat_p phat, LBA_p first, LBA_p last);
 
 /**
  * @brief Create new partition
@@ -692,7 +696,7 @@ PhatState Phat_GetFirstAndLastUsableLBA(Phat_p phat, LBA_p first, LBA_p last);
  *   - PhatState_PartitionOverlapped: Overlaps existing partition
  *   - PhatState_NoFreePartitions: No free partition slots available
  */
-PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partition_size_in_sectors, PhatBool_t bootable, PhatBool_t flush);
+PHAT_FUNC PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partition_size_in_sectors, PhatBool_t bootable, PhatBool_t flush);
 
 /**
  * @brief Format partition and mount it
@@ -711,5 +715,5 @@ PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA_t partiti
  *   - PhatState_CannotMakeFS: Partition too small for FAT
  *   - PhatState_PartitionTooSmall: Partition too small for selected FAT type
  */
-PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, uint16_t root_dir_entry_count, uint32_t volume_ID, const char *volume_lable, PhatBool_t flush);
+PHAT_FUNC PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int FAT_bits, uint16_t root_dir_entry_count, uint32_t volume_ID, const char *volume_lable, PhatBool_t flush);
 #endif

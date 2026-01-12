@@ -320,7 +320,7 @@ PHAT_FUNC PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t writ
  * @note This ensures all pending writes are committed to storage.
  * Called automatically during Unmount/DeInit.
  */
-PHAT_FUNC PhatState Phat_FlushCache(Phat_p phat);
+PHAT_FUNC PhatState Phat_FlushCache(Phat_p phat, PhatBool_t invalidate);
 
 /**
  * @brief Unmount the filesystem

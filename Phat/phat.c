@@ -1157,7 +1157,7 @@ PHAT_FUNC static int Phat_Cache_Compare_LBA(void const *a, void const *b)
 	return 0;
 }
 
-PHAT_FUNC PhatState Phat_FlushCache(Phat_p phat)
+PHAT_FUNC PhatState Phat_FlushCache(Phat_p phat, PhatBool_t invalidate)
 {
 	PhatState ret = PhatState_OK;
 	Phat_SectorCache_p pointers[PHAT_CACHED_SECTORS] = { 0 };
@@ -1165,7 +1165,16 @@ PHAT_FUNC PhatState Phat_FlushCache(Phat_p phat)
 
 	// Check parameters
 	if (!phat) return PhatState_InvalidParameter;
-	if (!phat->write_enable) return PhatState_OK;
+	if (!phat->write_enable)
+	{
+		for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
+		{
+			Phat_SectorCache_p cache = &phat->cache[i];
+			ret = Phat_InvalidateCachedSector(phat, cache);
+			if (ret != PhatState_OK) return ret;
+		}
+		return PhatState_OK;
+	}
 
 	for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
 	{
@@ -1179,7 +1188,10 @@ PHAT_FUNC PhatState Phat_FlushCache(Phat_p phat)
 
 		for (size_t i = 0; i < count; i++)
 		{
-			ret = Phat_WriteBackCachedSector(phat, pointers[i]);
+			if (invalidate)
+				ret = Phat_InvalidateCachedSector(phat, pointers[i]);
+			else
+				ret = Phat_WriteBackCachedSector(phat, pointers[i]);
 			if (ret != PhatState_OK) return ret;
 		}
 	}
@@ -1193,7 +1205,7 @@ PHAT_FUNC PhatState Phat_Unmount(Phat_p phat)
 	// Check parameters
 	if (!phat) return PhatState_InvalidParameter;
 
-	ret = Phat_FlushCache(phat);
+	ret = Phat_FlushCache(phat, 0);
 	if (ret != PhatState_OK) return ret;
 
 	if (phat->write_enable)
@@ -3255,7 +3267,7 @@ PHAT_FUNC PhatState Phat_InitializeGPT(Phat_p phat, PhatBool_t force, PhatBool_t
 
 	if (flush)
 	{
-		ret = Phat_FlushCache(phat);
+		ret = Phat_FlushCache(phat, 0);
 		if (ret != PhatState_OK) return ret;
 	}
 	return ret;
@@ -3413,7 +3425,7 @@ PHAT_FUNC PhatState Phat_CreatePartition(Phat_p phat, LBA_t partition_start, LBA
 		Phat_SetCachedSectorModified(cached_sector);
 		if (flush)
 		{
-			ret = Phat_FlushCache(phat);
+			ret = Phat_FlushCache(phat, 0);
 			if (ret != PhatState_OK) return ret;
 		}
 		return PhatState_OK;
@@ -3912,7 +3924,7 @@ PHAT_FUNC PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int 
 
 	if (flush)
 	{
-		ret = Phat_FlushCache(phat);
+		ret = Phat_FlushCache(phat, 0);
 		if (ret != PhatState_OK) return ret;
 	}
 

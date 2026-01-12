@@ -80,7 +80,7 @@ int main(int argc, char**argv)
 	V_(Phat_RemoveDirectory(&phat, L"TestPhatRmDir"));
 
 	V_(Phat_CreateDirectory(&phat, L"TestPhat/Deeper"));
-	V_(Phat_OpenFile(&phat, L"TestPhat/Deeper/The Biography of John Wok.txt", 0, &file_info));
+	V_(Phat_OpenFileFromRoot(&phat, L"TestPhat/Deeper/The Biography of John Wok.txt", 0, &file_info));
 	V_(Phat_WriteFile(&file_info, data_to_write, sizeof data_to_write, NULL));
 	V_(Phat_CloseFile(&file_info));
 
@@ -99,7 +99,7 @@ int main(int argc, char**argv)
 	}
 	Phat_CloseDir(&dir_info);
 
-	res = Phat_OpenFile(&phat, L"TestPhat/MiddleDir/The Biography of John Wok.txt", 1, &file_info);
+	res = Phat_OpenFileFromRoot(&phat, L"TestPhat/MiddleDir/The Biography of John Wok.txt", 1, &file_info);
 	if (res == PhatState_OK)
 	{
 		uint32_t file_size;

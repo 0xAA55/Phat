@@ -486,6 +486,10 @@ extern SD_HandleTypeDef hsd1;
 #if PHAT_USE_DMA
 volatile int SD1_TxCplt;
 volatile int SD1_RxCplt;
+#ifndef PHAT_DMA_BUFFER
+#define PHAT_DMA_BUFFER 4
+#endif
+uint8_t BSP_DMABuffer[PHAT_DMA_BUFFER * 512];
 #endif
 
 __weak PhatBool_t BSP_OpenDevice(void *userdata)
@@ -530,25 +534,44 @@ void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
 
 __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
-	UNUSED(userdata);
 #if PHAT_USE_DMA
-	uint32_t timeout = HAL_GetTick() + SDMMC_SWDATATIMEOUT;
-	SD1_RxCplt = 0;
-	SCB_CleanDCache_by_Addr((uint32_t*)buffer, num_blocks * 512);
-	if (HAL_SD_ReadBlocks_DMA(&hsd1, (uint8_t *)buffer, LBA, num_blocks) == HAL_OK)
+	if ((size_t)buffer & 3)
 	{
-		for (;;)
+		//For unaligned address
+		while(num_blocks)
 		{
-			if (SD1_RxCplt)
+			size_t blocks_to_read = num_blocks;
+			if (blocks_to_read > PHAT_DMA_BUFFER) blocks_to_read = PHAT_DMA_BUFFER;
+			if (!BSP_ReadSector(BSP_DMABuffer, LBA, blocks_to_read, userdata)) return 0;
+			memcpy(buffer, BSP_DMABuffer, blocks_to_read * 512);
+			buffer = (uint8_t*)buffer + blocks_to_read * 512;
+			num_blocks -= blocks_to_read;
+			LBA += blocks_to_read;
+		}
+		return 1;
+	}
+	else
+	{
+		//For aligned address
+		uint32_t timeout = HAL_GetTick() + SDMMC_SWDATATIMEOUT;
+		SD1_RxCplt = 0;
+		SCB_CleanDCache_by_Addr((uint32_t*)buffer, num_blocks * 512);
+		if (HAL_SD_ReadBlocks_DMA(&hsd1, (uint8_t *)buffer, LBA, num_blocks) == HAL_OK)
+		{
+			for (;;)
 			{
-				SCB_InvalidateDCache_by_Addr(buffer, num_blocks * 512);
-				return 1;
+				if (SD1_RxCplt)
+				{
+					SCB_InvalidateDCache_by_Addr(buffer, num_blocks * 512);
+					return 1;
+				}
+				if (HAL_GetTick() <= timeout) __WFI();
+				else return 0;
 			}
-			if (HAL_GetTick() <= timeout) __WFI();
-			else return 0;
 		}
 	}
 #else
+	UNUSED(userdata);
 	if (HAL_SD_ReadBlocks(&hsd1, (uint8_t *)buffer, LBA, num_blocks, SDMMC_SWDATATIMEOUT) == HAL_OK) return 1;
 #endif
 	return 0;
@@ -557,20 +580,39 @@ __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, voi
 __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
 #if PHAT_USE_DMA
-	uint32_t timeout = HAL_GetTick() + SDMMC_SWDATATIMEOUT;
-	UNUSED(userdata);
-	SD1_TxCplt = 0;
-	SCB_CleanDCache_by_Addr((uint32_t*)buffer, num_blocks * 512);
-	if (HAL_SD_WriteBlocks_DMA(&hsd1, (const uint8_t *)buffer, LBA, num_blocks) == HAL_OK)
+	if ((size_t)buffer & 3)
 	{
-		for (;;)
+		//For unaligned address
+		while(num_blocks)
 		{
-			if (SD1_TxCplt) return 1;
-			if (HAL_GetTick() <= timeout)__WFI();
-			else return 0;
+			size_t blocks_to_read = num_blocks;
+			if (blocks_to_read > PHAT_DMA_BUFFER) blocks_to_read = PHAT_DMA_BUFFER;
+			memcpy(BSP_DMABuffer, buffer, blocks_to_read * 512);
+			if (!BSP_WriteSector(BSP_DMABuffer, LBA, blocks_to_read, userdata)) return 0;
+			buffer = (uint8_t*)buffer + blocks_to_read * 512;
+			num_blocks -= blocks_to_read;
+			LBA += blocks_to_read;
+		}
+		return 1;
+	}
+	else
+	{
+		//For aligned address
+		uint32_t timeout = HAL_GetTick() + SDMMC_SWDATATIMEOUT;
+		SD1_TxCplt = 0;
+		SCB_CleanDCache_by_Addr((uint32_t*)buffer, num_blocks * 512);
+		if (HAL_SD_WriteBlocks_DMA(&hsd1, (const uint8_t *)buffer, LBA, num_blocks) == HAL_OK)
+		{
+			for (;;)
+			{
+				if (SD1_TxCplt) return 1;
+				if (HAL_GetTick() <= timeout)__WFI();
+				else return 0;
+			}
 		}
 	}
 #else
+	UNUSED(userdata);
 	if (HAL_SD_WriteBlocks(&hsd1, (const uint8_t *)buffer, LBA, num_blocks, SDMMC_SWDATATIMEOUT) == HAL_OK) return 1;
 #endif
 	return 0;

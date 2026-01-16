@@ -3222,9 +3222,9 @@ PHAT_FUNC PhatState Phat_InitializeGPT(Phat_p phat, PhatBool_t force, PhatBool_t
 	entry->boot_indicator = 0;
 	Phat_LBA_to_CHS(1, &entry->starting_chs);
 	entry->partition_type = 0xEE;
-	Phat_LBA_to_CHS(MAX_CHS_LBA + 1, &entry->ending_chs);
+	Phat_LBA_to_CHS(MAX_CHS_LBA, &entry->ending_chs);
 	entry->starting_LBA = 1;
-	entry->size_in_sectors = 0xFFFFFFFF;
+	entry->size_in_sectors = num_sectors_total;
 	Phat_SetCachedSectorModified(cached_sector);
 
 	first_usable_LBA = 0x22;

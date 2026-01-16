@@ -286,7 +286,7 @@ static PhatBool_t MountVHD()
 
 	if (!VHDFileExists())
 	{
-		if (!CreateVHD(1024 * 1024 * 1024))
+		if (!CreateVHD(1024ull * 1024 * 1024 * 8))
 		{
 			fprintf(stderr, "Please create a VHD file (%S), initialize to MBR, create a FAT32 partition, then quick format the partition.\n", BSP_DeviceFilePath);
 			return 0;
@@ -342,7 +342,7 @@ static PhatBool_t UnmountVHD()
 
 	if (!VHDFileExists())
 	{
-		if (!CreateVHD(1024 * 1024 * 1024))
+		if (!CreateVHD(1024ull * 1024 * 1024 * 8))
 		{
 			fprintf(stderr, "Please create a VHD file (%S), initialize to MBR, create a FAT32 partition, then quick format the partition.\n", BSP_DeviceFilePath);
 			return 0;

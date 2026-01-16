@@ -494,11 +494,22 @@ uint8_t BSP_DMABuffer[PHAT_DMA_BUFFER * 512];
 
 __weak PhatBool_t BSP_OpenDevice(void *userdata)
 {
-	UNUSED(userdata);
 #ifndef DISABLE_SD_INIT
-	if (HAL_SD_Init(&hsd1) == HAL_OK) return 1;
+	static uint32_t init_clock_div;
+	UNUSED(userdata);
+	if (!init_clock_div)
+	{
+	  init_clock_div = hsd1.Init.ClockDiv;
+	  if (!init_clock_div) init_clock_div = 1;
+	}
+	for (int i = 0; i < 5; i++)
+	{
+		hsd1.Init.ClockDiv = init_clock_div + i;
+		if (HAL_SD_Init(&hsd1) == HAL_OK) return 1;
+	}
 	return 0;
 #else
+  UNUSED(userdata);
 	return 1;
 #endif
 }

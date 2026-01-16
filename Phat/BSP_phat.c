@@ -504,6 +504,9 @@ __weak PhatBool_t BSP_OpenDevice(void *userdata)
 	}
 	for (int i = 0; i < 5; i++)
 	{
+		__HAL_RCC_SDMMC1_FORCE_RESET();
+		HAL_Delay(2);
+		__HAL_RCC_SDMMC1_RELEASE_RESET();
 		hsd1.Init.ClockDiv = init_clock_div + i;
 		if (HAL_SD_Init(&hsd1) == HAL_OK) return 1;
 	}

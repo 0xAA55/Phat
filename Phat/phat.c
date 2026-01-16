@@ -3580,8 +3580,6 @@ PHAT_FUNC PhatState Phat_MakeFS_And_Mount(Phat_p phat, int partition_index, int 
 	if (ret != PhatState_OK) return ret;
 	partition_size_in_sectors = partition_end_LBA - partition_start_LBA;
 
-	if (partition_size_in_sectors >= 0xFFFFFFFF / 512) return PhatState_CannotMakeFS;
-
 	num_FATs = 2;
 	if (!volume_lable) volume_lable = "NO NAME";
 

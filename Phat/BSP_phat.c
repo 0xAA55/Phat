@@ -184,7 +184,7 @@ static PhatBool_t CreateVHD(uint64_t size)
 	uint16_t cylinders;
 	uint32_t checksum = 0;
 	uint8_t *footer_ptr = (uint8_t*)&footer;
-	uint32_t written = 0;
+	DWORD written = 0;
 
 	hDevice = CreateFileW(BSP_DeviceFilePath, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, 0, NULL);
 	if (hDevice == INVALID_HANDLE_VALUE)

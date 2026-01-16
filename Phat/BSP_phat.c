@@ -489,6 +489,12 @@ volatile int SD1_RxCplt;
 #ifndef PHAT_DMA_BUFFER
 #define PHAT_DMA_BUFFER 4
 #endif
+#ifndef PHAT_DMA_ALLOWED_ADDRESS_START
+#define PHAT_DMA_ALLOWED_ADDRESS_START 0x24000000
+#endif
+#ifndef PHAT_DMA_ALLOWED_ADDRESS_END
+#define PHAT_DMA_ALLOWED_ADDRESS_END   0x2407FFFF
+#endif
 uint8_t BSP_DMABuffer[PHAT_DMA_BUFFER * 512];
 #endif
 
@@ -549,7 +555,7 @@ void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
 __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
 #if PHAT_USE_DMA
-	if ((size_t)buffer & 3)
+	if ((size_t)buffer & 3 || (size_t)buffer + num_blocks * 512 < PHAT_DMA_ALLOWED_ADDRESS_START || (size_t)buffer > PHAT_DMA_ALLOWED_ADDRESS_END)
 	{
 		//For unaligned address
 		while(num_blocks)
@@ -594,7 +600,7 @@ __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, voi
 __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
 #if PHAT_USE_DMA
-	if ((size_t)buffer & 3)
+	if ((size_t)buffer & 3 || (size_t)buffer + num_blocks * 512 < PHAT_DMA_ALLOWED_ADDRESS_START || (size_t)buffer > PHAT_DMA_ALLOWED_ADDRESS_END)
 	{
 		//For unaligned address
 		while(num_blocks)

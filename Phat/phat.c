@@ -163,7 +163,7 @@ typedef struct Phat_LFN_Entry_s
 }Phat_LFN_Entry_t, *Phat_LFN_Entry_p;
 #pragma pack(pop)
 
-#define MAX_CHS_LBA (1023 * 255 * 63)
+#define MAX_CHS_LBA (1023 * 255 * 63 + 254 * 63 - 1)
 
 #define ATTRIB_LFN (ATTRIB_READ_ONLY | ATTRIB_HIDDEN | ATTRIB_SYSTEM | ATTRIB_VOLUME_ID)
 #define CI_EXTENSION_IS_LOWER 0x08
@@ -692,26 +692,22 @@ PHAT_FUNC static PhatBool_t Phat_LBA_to_CHS(LBA_t LBA, Phat_CHS_p chs)
 {
 	const uint16_t heads_per_cylinder = 255;
 	const uint8_t sectors_per_track = 63;
+	PhatBool_t ret = 1;
 
 	if (LBA > MAX_CHS_LBA)
 	{
 		// Overflowed, set to maximum
-		chs->head = 0xFE;
-		chs->sector = 0xFF;
-		chs->cylinder = 0xFF;
-		return 0;
+		LBA = MAX_CHS_LBA;
+		ret = 0;
 	}
-	else
-	{
-		uint16_t cylinder = (uint16_t)(LBA / (heads_per_cylinder * sectors_per_track));
-		uint8_t head = (uint8_t)(LBA / sectors_per_track) % heads_per_cylinder;
-		uint8_t sector = (uint8_t)(LBA % sectors_per_track) + 1;
+	uint16_t cylinder = (uint16_t)(LBA / (heads_per_cylinder * sectors_per_track));
+	uint8_t head = (uint8_t)(LBA / sectors_per_track) % heads_per_cylinder;
+	uint8_t sector = (uint8_t)(LBA % sectors_per_track) + 1;
 
-		chs->head = head;
-		chs->sector = (uint8_t)(sector | ((cylinder >> 2) & 0xC0));
-		chs->cylinder = (uint8_t)(cylinder & 0xFF);
-		return 1;
-	}
+	chs->head = head;
+	chs->sector = (uint8_t)(sector | ((cylinder >> 2) & 0xC0));
+	chs->cylinder = (uint8_t)(cylinder & 0xFF);
+	return ret;
 }
 
 PHAT_FUNC static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting_LBA, LBA_t *p_size_in_sectors)

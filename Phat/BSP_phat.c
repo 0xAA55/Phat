@@ -10,10 +10,10 @@
 #endif
 #endif
 
-__weak PhatBool_t BSP_OpenDevice(void *userdata);
-__weak PhatBool_t BSP_CloseDevice(void *userdata);
-__weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
-__weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
+PHAT_FUNC __weak PhatBool_t BSP_OpenDevice(void *userdata);
+PHAT_FUNC __weak PhatBool_t BSP_CloseDevice(void *userdata);
+PHAT_FUNC __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
+PHAT_FUNC __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata);
 
 #ifdef _WIN32
 #define INITGUID
@@ -54,7 +54,7 @@ typedef struct VHD_Footer_s
 }VHD_Footer_t, *VHD_Footer_p;
 #pragma pack(pop)
 
-static void ShowError(DWORD error_code, const char *performing)
+PHAT_FUNC static void ShowError(DWORD error_code, const char *performing)
 {
 	LPWSTR w_message_buffer = NULL;
 	LPSTR message_buffer = NULL;
@@ -80,19 +80,19 @@ static void ShowError(DWORD error_code, const char *performing)
 	free(message_buffer);
 }
 
-static void ShowLastError(const char *performing)
+PHAT_FUNC static void ShowLastError(const char *performing)
 {
 	ShowError(GetLastError(), performing);
 }
 
-static PhatBool_t VHDFileExists()
+PHAT_FUNC static PhatBool_t VHDFileExists()
 {
 	DWORD attrib = GetFileAttributesW(BSP_DeviceFilePath);
 	return (attrib != INVALID_FILE_ATTRIBUTES &&
 		!(attrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-static PhatBool_t GetPrivileged()
+PHAT_FUNC static PhatBool_t GetPrivileged()
 {
 	HANDLE hToken = INVALID_HANDLE_VALUE;
 	uint32_t privilege_buffer[sizeof(TOKEN_PRIVILEGES) + sizeof(LUID_AND_ATTRIBUTES) * 2] = { 0 };
@@ -136,7 +136,7 @@ ErrRet:
 	return 0;
 }
 
-static uint16_t BSwap16(uint16_t val)
+PHAT_FUNC static uint16_t BSwap16(uint16_t val)
 {
 	union {
 		uint8_t u8s[2];
@@ -149,7 +149,7 @@ static uint16_t BSwap16(uint16_t val)
 	return u2.u16 ;
 }
 
-static uint32_t BSwap32(uint32_t val)
+PHAT_FUNC static uint32_t BSwap32(uint32_t val)
 {
 	union {
 		uint16_t u16s[2];
@@ -162,7 +162,7 @@ static uint32_t BSwap32(uint32_t val)
 	return u2.u32;
 }
 
-static uint64_t BSwap64(uint64_t val)
+PHAT_FUNC static uint64_t BSwap64(uint64_t val)
 {
 	union {
 		uint32_t u32s[2];
@@ -175,7 +175,7 @@ static uint64_t BSwap64(uint64_t val)
 	return u2.u64;
 }
 
-static PhatBool_t CreateVHD(uint64_t size)
+PHAT_FUNC static PhatBool_t CreateVHD(uint64_t size)
 {
 	VHD_Footer_t footer = { 0 };
 	LARGE_INTEGER li;
@@ -279,7 +279,7 @@ FailExit:
 	return 0;
 }
 
-static PhatBool_t MountVHD()
+PHAT_FUNC static PhatBool_t MountVHD()
 {
 	WCHAR vhd_path[4096];
 	const DWORD buffer_len = sizeof vhd_path / sizeof vhd_path[0];
@@ -334,7 +334,7 @@ static PhatBool_t MountVHD()
 	return 1;
 }
 
-static PhatBool_t UnmountVHD()
+PHAT_FUNC static PhatBool_t UnmountVHD()
 {
 	WCHAR vhd_path[4096];
 	const DWORD buffer_len = sizeof vhd_path / sizeof vhd_path[0];
@@ -391,7 +391,7 @@ static PhatBool_t UnmountVHD()
 	return 1;
 }
 
-__weak PhatBool_t BSP_OpenDevice(void *userdata)
+PHAT_FUNC __weak PhatBool_t BSP_OpenDevice(void *userdata)
 {
 	UNUSED(userdata);
 	UnmountVHD();
@@ -404,7 +404,7 @@ __weak PhatBool_t BSP_OpenDevice(void *userdata)
 	return 1;
 }
 
-__weak PhatBool_t BSP_CloseDevice(void *userdata)
+PHAT_FUNC __weak PhatBool_t BSP_CloseDevice(void *userdata)
 {
 	UNUSED(userdata);
 	if (hDevice != INVALID_HANDLE_VALUE)
@@ -416,7 +416,7 @@ __weak PhatBool_t BSP_CloseDevice(void *userdata)
 	return 1;
 }
 
-__weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
+PHAT_FUNC __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
 	UNUSED(userdata);
 	DWORD num_read = 0;
@@ -438,7 +438,7 @@ __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, voi
 	return 1;
 }
 
-__weak LBA_t BSP_GetDeviceCapacity(void *userdata)
+PHAT_FUNC __weak LBA_t BSP_GetDeviceCapacity(void *userdata)
 {
 	UNUSED(userdata);
 	LARGE_INTEGER file_size;
@@ -451,7 +451,7 @@ __weak LBA_t BSP_GetDeviceCapacity(void *userdata)
 	return (LBA_t)(file_size.QuadPart / 512) - 1;
 }
 
-__weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
+PHAT_FUNC __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
 	UNUSED(userdata);
 	DWORD num_wrote = 0;
@@ -520,7 +520,7 @@ __weak PhatBool_t BSP_OpenDevice(void *userdata)
 #endif
 }
 
-__weak PhatBool_t BSP_CloseDevice(void *userdata)
+PHAT_FUNC __weak PhatBool_t BSP_CloseDevice(void *userdata)
 {
 	UNUSED(userdata);
 #ifndef DISABLE_SD_INIT
@@ -532,7 +532,7 @@ __weak PhatBool_t BSP_CloseDevice(void *userdata)
 }
 
 #if PHAT_USE_DMA
-void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
+PHAT_FUNC void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
 {
 	if (hsd == &hsd1)
 	{
@@ -540,7 +540,7 @@ void HAL_SD_TxCpltCallback(SD_HandleTypeDef *hsd)
 	}
 }
 
-void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
+PHAT_FUNC void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
 {
 	if (hsd == &hsd1)
 	{
@@ -549,7 +549,7 @@ void HAL_SD_RxCpltCallback(SD_HandleTypeDef *hsd)
 }
 #endif
 
-__weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
+PHAT_FUNC __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
 #if PHAT_USE_DMA
 	if ((size_t)buffer & 3 || !PHAT_IS_DMA_ALLOWED_ADDRESS(buffer, num_blocks))
@@ -594,7 +594,7 @@ __weak PhatBool_t BSP_ReadSector(void *buffer, LBA_t LBA, size_t num_blocks, voi
 	return 0;
 }
 
-__weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
+PHAT_FUNC __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_blocks, void *userdata)
 {
 #if PHAT_USE_DMA
 	if ((size_t)buffer & 3 || !PHAT_IS_DMA_ALLOWED_ADDRESS(LBA, num_blocks))
@@ -635,7 +635,7 @@ __weak PhatBool_t BSP_WriteSector(const void *buffer, LBA_t LBA, size_t num_bloc
 	return 0;
 }
 
-__weak LBA_t BSP_GetDeviceCapacity(void *userdata)
+PHAT_FUNC __weak LBA_t BSP_GetDeviceCapacity(void *userdata)
 {
 	UNUSED(userdata);
 	HAL_SD_CardInfoTypeDef info;
@@ -644,7 +644,7 @@ __weak LBA_t BSP_GetDeviceCapacity(void *userdata)
 }
 #endif
 
-__weak Phat_Disk_Driver_t Phat_InitDriver(void *userdata)
+PHAT_FUNC __weak Phat_Disk_Driver_t Phat_InitDriver(void *userdata)
 {
 	Phat_Disk_Driver_t ret = { 0 };
 	ret.userdata = userdata;
@@ -655,12 +655,12 @@ __weak Phat_Disk_Driver_t Phat_InitDriver(void *userdata)
 	return ret;
 }
 
-__weak void Phat_DeInitDriver(Phat_Disk_Driver_p driver)
+PHAT_FUNC __weak void Phat_DeInitDriver(Phat_Disk_Driver_p driver)
 {
 	memset(driver, 0, sizeof * driver);
 }
 
-__weak PhatBool_t Phat_OpenDevice(Phat_Disk_Driver_p driver)
+PHAT_FUNC __weak PhatBool_t Phat_OpenDevice(Phat_Disk_Driver_p driver)
 {
 	if (driver->fn_open_device(driver->userdata))
 	{
@@ -676,17 +676,17 @@ __weak PhatBool_t Phat_OpenDevice(Phat_Disk_Driver_p driver)
 	return 0;
 }
 
-__weak PhatBool_t Phat_CloseDevice(Phat_Disk_Driver_p driver)
+PHAT_FUNC __weak PhatBool_t Phat_CloseDevice(Phat_Disk_Driver_p driver)
 {
 	return driver->fn_close_device(driver->userdata);
 }
 
-__weak PhatBool_t Phat_ReadSector(Phat_Disk_Driver_p driver, void *buffer, LBA_t LBA, size_t num_blocks)
+PHAT_FUNC __weak PhatBool_t Phat_ReadSector(Phat_Disk_Driver_p driver, void *buffer, LBA_t LBA, size_t num_blocks)
 {
 	return driver->fn_read_sector(buffer, LBA, num_blocks, driver->userdata);
 }
 
-__weak PhatBool_t Phat_WriteSector(Phat_Disk_Driver_p driver, const void *buffer, LBA_t LBA, size_t num_blocks)
+PHAT_FUNC __weak PhatBool_t Phat_WriteSector(Phat_Disk_Driver_p driver, const void *buffer, LBA_t LBA, size_t num_blocks)
 {
 	return driver->fn_write_sector(buffer, LBA, num_blocks, driver->userdata);
 }

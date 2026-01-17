@@ -16,6 +16,10 @@ typedef uint32_t LBA_t, *LBA_p;
 typedef int32_t SLBA_t, *SLBA_p;
 #endif
 
+#ifndef PHAT_FUNC
+#define PHAT_FUNC
+#endif
+
 #ifndef SDMMC_SWDATATIMEOUT
 #define SDMMC_SWDATATIMEOUT 200
 #endif
@@ -46,14 +50,14 @@ typedef struct Phat_Disk_Driver_s
 	LBA_t device_capacity_in_sectors;
 }Phat_Disk_Driver_t, *Phat_Disk_Driver_p;
 
-Phat_Disk_Driver_t Phat_InitDriver(void *userdata);
-void Phat_DeInitDriver(Phat_Disk_Driver_p driver);
+PHAT_FUNC Phat_Disk_Driver_t Phat_InitDriver(void *userdata);
+PHAT_FUNC void Phat_DeInitDriver(Phat_Disk_Driver_p driver);
 
-PhatBool_t Phat_OpenDevice(Phat_Disk_Driver_p driver);
-PhatBool_t Phat_CloseDevice(Phat_Disk_Driver_p driver);
+PHAT_FUNC PhatBool_t Phat_OpenDevice(Phat_Disk_Driver_p driver);
+PHAT_FUNC PhatBool_t Phat_CloseDevice(Phat_Disk_Driver_p driver);
 
-PhatBool_t Phat_ReadSector(Phat_Disk_Driver_p driver, void *buffer, LBA_t LBA, size_t num_blocks);
-PhatBool_t Phat_WriteSector(Phat_Disk_Driver_p driver, const void *buffer, LBA_t LBA, size_t num_blocks);
+PHAT_FUNC PhatBool_t Phat_ReadSector(Phat_Disk_Driver_p driver, void *buffer, LBA_t LBA, size_t num_blocks);
+PHAT_FUNC PhatBool_t Phat_WriteSector(Phat_Disk_Driver_p driver, const void *buffer, LBA_t LBA, size_t num_blocks);
 
 #ifdef _MSC_VER
 #define PHAT_ALIGNMENT

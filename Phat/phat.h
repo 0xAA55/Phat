@@ -182,6 +182,7 @@ typedef enum PhatState_e
 	PhatState_PartitionOverlapped,
 	PhatState_PartitionIndexOutOfBound,
 	PhatState_NeedBigLBA,
+	PhatState_ModifiedDataNeedWriteBack,
 	PhatState_LastState,
 }PhatState;
 
@@ -303,6 +304,19 @@ PHAT_FUNC PhatBool_t Phat_IsValidFilename(WChar_p filename);
  *       the entire disk is treated as a single FAT partition.
  */
 PHAT_FUNC PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t write_enable);
+
+/**
+ * @brief Change the write enable switch
+ * 
+ * @param phat Mounted Phat context
+ * @param write_enable Enable write operations if non-zero
+ * @return PhatState
+ *   - PhatState_OK: Success
+ *   - PhatState_ModifiedDataNeedWriteBack: When previously `write_enable` is non-zero and write occurs, the cached sectors need to be flushed.
+ *
+ * @note When on error, the change fails, `phat->write_enable` remains unchanged.
+ */
+PHAT_FUNC PhatState Phat_ChangeWriteEnable(Phat_p phat, PhatBool_t write_enable);
 
 /**
  * @brief Flush all cached sectors to storage

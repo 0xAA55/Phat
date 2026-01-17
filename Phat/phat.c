@@ -314,6 +314,7 @@ PHAT_FUNC const char *Phat_StateToString(PhatState s)
 		"The partition overlaps an existing one",
 		"The partition index is out of bound",
 		"64-bit LBA is needed for the disk",
+		"Modified data in the cache need​ a write-back.",
 	};
 	if (s >= PhatState_LastState) return "InvalidStateNumber";
 	else return strlist[s];
@@ -1122,6 +1123,26 @@ PHAT_FUNC PhatState Phat_Mount(Phat_p phat, int partition_index, PhatBool_t writ
 
 	ret = Phat_CheckIsDirty(phat, &phat->is_dirty);
 	if (ret != PhatState_OK) return ret;
+
+	return PhatState_OK;
+}
+
+PHAT_FUNC PhatState Phat_ChangeWriteEnable(Phat_p phat, PhatBool_t write_enable)
+{
+	phat->write_enable = write_enable;
+
+	if (!write_enable)
+	{
+		for (size_t i = 0; i < PHAT_CACHED_SECTORS; i++)
+		{
+			Phat_SectorCache_p cache = &phat->cache[i];
+			if (Phat_IsCachedSectorValid(cache) && !Phat_IsCachedSectorSync(cache))
+			{
+				phat->write_enable = 1;
+				return PhatState_ModifiedDataNeedWriteBack;
+			}
+		}
+	}
 
 	return PhatState_OK;
 }

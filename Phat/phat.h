@@ -44,10 +44,6 @@
 #define PHAT_ALIGNMENT __attribute__((aligned(4)))
 #endif
 
-#ifndef PHAT_FUNC
-#define PHAT_FUNC
-#endif
-
 typedef uint16_t WChar_t, *WChar_p;
 typedef uint32_t Cluster_t, *Cluster_p;
 typedef int32_t SCluster_t, *SCluster_p;

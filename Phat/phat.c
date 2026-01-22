@@ -1588,8 +1588,10 @@ PHAT_FUNC static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem
 	Phat_SectorCache_p cached_sector;
 	Phat_DirItem_p dir_items;
 	Phat_p phat = dir_info->phat;
-	uint16_t cur_diritem_in_cur_cluster = dir_info->cur_diritem % phat->num_diritems_in_a_cluster;
+	uint16_t cur_diritem_in_cur_cluster;
 
+	if (!phat->num_diritems_in_a_cluster) return PhatState_InternalError;
+	cur_diritem_in_cur_cluster = dir_info->cur_diritem % phat->num_diritems_in_a_cluster;
 	if (phat->FAT_bits == 32)
 	{
 		if (dir_info->dir_start_cluster == 0) return PhatState_EndOfDirectory;

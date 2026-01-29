@@ -54,7 +54,7 @@ typedef struct VHD_Footer_s
 }VHD_Footer_t, *VHD_Footer_p;
 #pragma pack(pop)
 
-PHAT_FUNC static void ShowError(DWORD error_code, const char *performing)
+PHAT_STATIC_FUNC void ShowError(DWORD error_code, const char *performing)
 {
 	LPWSTR w_message_buffer = NULL;
 	LPSTR message_buffer = NULL;
@@ -80,19 +80,19 @@ PHAT_FUNC static void ShowError(DWORD error_code, const char *performing)
 	free(message_buffer);
 }
 
-PHAT_FUNC static void ShowLastError(const char *performing)
+PHAT_STATIC_FUNC void ShowLastError(const char *performing)
 {
 	ShowError(GetLastError(), performing);
 }
 
-PHAT_FUNC static PhatBool_t VHDFileExists()
+PHAT_STATIC_FUNC PhatBool_t VHDFileExists()
 {
 	DWORD attrib = GetFileAttributesW(BSP_DeviceFilePath);
 	return (attrib != INVALID_FILE_ATTRIBUTES &&
 		!(attrib & FILE_ATTRIBUTE_DIRECTORY));
 }
 
-PHAT_FUNC static PhatBool_t GetPrivileged()
+PHAT_STATIC_FUNC PhatBool_t GetPrivileged()
 {
 	HANDLE hToken = INVALID_HANDLE_VALUE;
 	uint32_t privilege_buffer[sizeof(TOKEN_PRIVILEGES) + sizeof(LUID_AND_ATTRIBUTES) * 2] = { 0 };
@@ -136,7 +136,7 @@ ErrRet:
 	return 0;
 }
 
-PHAT_FUNC static uint16_t BSwap16(uint16_t val)
+PHAT_STATIC_FUNC uint16_t BSwap16(uint16_t val)
 {
 	union {
 		uint8_t u8s[2];
@@ -149,7 +149,7 @@ PHAT_FUNC static uint16_t BSwap16(uint16_t val)
 	return u2.u16 ;
 }
 
-PHAT_FUNC static uint32_t BSwap32(uint32_t val)
+PHAT_STATIC_FUNC uint32_t BSwap32(uint32_t val)
 {
 	union {
 		uint16_t u16s[2];
@@ -162,7 +162,7 @@ PHAT_FUNC static uint32_t BSwap32(uint32_t val)
 	return u2.u32;
 }
 
-PHAT_FUNC static uint64_t BSwap64(uint64_t val)
+PHAT_STATIC_FUNC uint64_t BSwap64(uint64_t val)
 {
 	union {
 		uint32_t u32s[2];
@@ -175,7 +175,7 @@ PHAT_FUNC static uint64_t BSwap64(uint64_t val)
 	return u2.u64;
 }
 
-PHAT_FUNC static PhatBool_t CreateVHD(uint64_t size)
+PHAT_STATIC_FUNC PhatBool_t CreateVHD(uint64_t size)
 {
 	VHD_Footer_t footer = { 0 };
 	LARGE_INTEGER li;
@@ -279,7 +279,7 @@ FailExit:
 	return 0;
 }
 
-PHAT_FUNC static PhatBool_t MountVHD()
+PHAT_STATIC_FUNC PhatBool_t MountVHD()
 {
 	WCHAR vhd_path[4096];
 	const DWORD buffer_len = sizeof vhd_path / sizeof vhd_path[0];
@@ -334,7 +334,7 @@ PHAT_FUNC static PhatBool_t MountVHD()
 	return 1;
 }
 
-PHAT_FUNC static PhatBool_t UnmountVHD()
+PHAT_STATIC_FUNC PhatBool_t UnmountVHD()
 {
 	WCHAR vhd_path[4096];
 	const DWORD buffer_len = sizeof vhd_path / sizeof vhd_path[0];

@@ -176,8 +176,8 @@ static const Phat_GUID_t GUID_MS_reserved_partition_type = { 0xE3C9E316, 0x0B5C,
 static const Phat_GUID_t GUID_basic_data_partition_type =  { 0xEBD0A0A2, 0xB9E5, 0x4433, "\x87\xC0\x68\xB6\xB7\x26\x99\xC7" };
 static const Phat_GUID_t GUID_empty = {0};
 
-PHAT_FUNC static PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_t *read_out);
-PHAT_FUNC static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write, PhatBool_t flush);
+PHAT_STATIC_FUNC PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_t *read_out);
+PHAT_STATIC_FUNC PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write, PhatBool_t flush);
 
 static const WChar_t Cp437_UpperPart[] =
 {
@@ -267,7 +267,7 @@ static const uint32_t crc_table[256] =
 	0xb40bbe37, 0xc30c8ea1, 0x5a05df1b, 0x2d02ef8d
 };
 
-PHAT_FUNC static WChar_t Cp437_To_Unicode(uint8_t cp437_char)
+PHAT_STATIC_FUNC WChar_t Cp437_To_Unicode(uint8_t cp437_char)
 {
 	if (cp437_char < 0x80)
 		return (WChar_t)cp437_char;
@@ -320,7 +320,7 @@ PHAT_FUNC const char *Phat_StateToString(PhatState s)
 	else return strlist[s];
 }
 
-PHAT_FUNC static uint32_t Phat_CRC32(uint32_t crc, void *buf, size_t size)
+PHAT_STATIC_FUNC uint32_t Phat_CRC32(uint32_t crc, void *buf, size_t size)
 {
 	uint8_t *ptr = buf;
 	crc = ~crc;
@@ -328,31 +328,31 @@ PHAT_FUNC static uint32_t Phat_CRC32(uint32_t crc, void *buf, size_t size)
 	return ~crc;
 }
 
-PHAT_FUNC static WChar_p Phat_ToEndOfString(WChar_p string)
+PHAT_STATIC_FUNC WChar_p Phat_ToEndOfString(WChar_p string)
 {
 	while (*string) string++;
 	return string;
 }
 
-PHAT_FUNC static size_t Phat_Wcslen(const WChar_p str)
+PHAT_STATIC_FUNC size_t Phat_Wcslen(const WChar_p str)
 {
 	return (size_t)(Phat_ToEndOfString(str) - str);
 }
 
-PHAT_FUNC static WChar_p Phat_Wcscpy(WChar_p dest, const WChar_p src)
+PHAT_STATIC_FUNC WChar_p Phat_Wcscpy(WChar_p dest, const WChar_p src)
 {
 	size_t len = Phat_Wcslen(src) + 1;
 	return memmove(dest, src, len * sizeof(WChar_t));
 }
 
-PHAT_FUNC static WChar_p Phat_Wcsncpy(WChar_p dest, const WChar_p src, size_t length)
+PHAT_STATIC_FUNC WChar_p Phat_Wcsncpy(WChar_p dest, const WChar_p src, size_t length)
 {
 	size_t len = Phat_Wcslen(src) + 1;
 	if (len > length) len = length;
 	return memmove(dest, src, len * sizeof(WChar_t));
 }
 
-PHAT_FUNC static int Phat_Wcscmp(WChar_p s1, const WChar_p s2)
+PHAT_STATIC_FUNC int Phat_Wcscmp(WChar_p s1, const WChar_p s2)
 {
 	size_t len1 = Phat_Wcslen(s1);
 	size_t len2 = Phat_Wcslen(s2);
@@ -361,7 +361,7 @@ PHAT_FUNC static int Phat_Wcscmp(WChar_p s1, const WChar_p s2)
 	return memcmp(s1, s2, len1 * sizeof(WChar_t));
 }
 
-PHAT_FUNC static Phat_GUID_t Phat_GenGUID()
+PHAT_STATIC_FUNC Phat_GUID_t Phat_GenGUID()
 {
 	Phat_GUID_t ret = { 0 };
 	uint8_t *ptr = (uint8_t*) & ret;
@@ -500,7 +500,7 @@ PHAT_FUNC void Phat_PathToNameInPlace(WChar_p path)
 	Phat_PathToName(path, path);
 }
 
-PHAT_FUNC static void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p sector)
+PHAT_STATIC_FUNC void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p sector)
 {
 	Phat_SectorCache_p prev = sector->prev;
 	Phat_SectorCache_p next = sector->next;
@@ -519,32 +519,32 @@ PHAT_FUNC static void Phat_MoveCachedSectorHead(Phat_p phat, Phat_SectorCache_p 
 	phat->cache_LRU_head = sector;
 }
 
-PHAT_FUNC static PhatBool_t Phat_IsCachedSectorSync(Phat_SectorCache_p cached_sector)
+PHAT_STATIC_FUNC PhatBool_t Phat_IsCachedSectorSync(Phat_SectorCache_p cached_sector)
 {
 	return (cached_sector->usage & SECTORCACHE_SYNC) == SECTORCACHE_SYNC;
 }
 
-PHAT_FUNC static void Phat_SetCachedSectorUnsync(Phat_SectorCache_p cached_sector)
+PHAT_STATIC_FUNC void Phat_SetCachedSectorUnsync(Phat_SectorCache_p cached_sector)
 {
 	cached_sector->usage &= ~SECTORCACHE_SYNC;
 }
 
-PHAT_FUNC static void Phat_SetCachedSectorSync(Phat_SectorCache_p cached_sector)
+PHAT_STATIC_FUNC void Phat_SetCachedSectorSync(Phat_SectorCache_p cached_sector)
 {
 	cached_sector->usage |= SECTORCACHE_SYNC;
 }
 
-PHAT_FUNC static PhatBool_t Phat_IsCachedSectorValid(Phat_SectorCache_p cached_sector)
+PHAT_STATIC_FUNC PhatBool_t Phat_IsCachedSectorValid(Phat_SectorCache_p cached_sector)
 {
 	return (cached_sector->usage & SECTORCACHE_VALID) == SECTORCACHE_VALID;
 }
 
-PHAT_FUNC static void Phat_SetCachedSectorValid(Phat_SectorCache_p cached_sector)
+PHAT_STATIC_FUNC void Phat_SetCachedSectorValid(Phat_SectorCache_p cached_sector)
 {
 	cached_sector->usage |= SECTORCACHE_VALID;
 }
 
-PHAT_FUNC static PhatState Phat_WriteBackCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
+PHAT_STATIC_FUNC PhatState Phat_WriteBackCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
 {
 	if (!Phat_IsCachedSectorSync(cached_sector))
 	{
@@ -558,7 +558,7 @@ PHAT_FUNC static PhatState Phat_WriteBackCachedSector(Phat_p phat, Phat_SectorCa
 }
 
 // Will write back if dirty
-PHAT_FUNC static PhatState Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
+PHAT_STATIC_FUNC PhatState Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorCache_p cached_sector)
 {
 	PhatState ret;
 	if (Phat_IsCachedSectorValid(cached_sector))
@@ -571,7 +571,7 @@ PHAT_FUNC static PhatState Phat_InvalidateCachedSector(Phat_p phat, Phat_SectorC
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_ReadSectorThroughCache(Phat_p phat, LBA_t LBA, Phat_SectorCache_p *pp_cached_sector)
+PHAT_STATIC_FUNC PhatState Phat_ReadSectorThroughCache(Phat_p phat, LBA_t LBA, Phat_SectorCache_p *pp_cached_sector)
 {
 	PhatState ret = PhatState_OK;
 	Phat_SectorCache_p cache = phat->cache_LRU_head;
@@ -625,13 +625,13 @@ PHAT_FUNC static PhatState Phat_ReadSectorThroughCache(Phat_p phat, LBA_t LBA, P
 	return PhatState_OK;
 }
 
-PHAT_FUNC static void Phat_SetCachedSectorModified(Phat_SectorCache_p p_cached_sector)
+PHAT_STATIC_FUNC void Phat_SetCachedSectorModified(Phat_SectorCache_p p_cached_sector)
 {
 	Phat_SetCachedSectorUnsync(p_cached_sector);
 }
 
 // Will load the sector into cache if not present
-PHAT_FUNC static PhatState Phat_WriteSectorThroughCache(Phat_p phat, LBA_t LBA, const void *buffer)
+PHAT_STATIC_FUNC PhatState Phat_WriteSectorThroughCache(Phat_p phat, LBA_t LBA, const void *buffer)
 {
 	Phat_SectorCache_p cached_sector;
 	PhatState ret = Phat_ReadSectorThroughCache(phat, LBA, &cached_sector);
@@ -642,7 +642,7 @@ PHAT_FUNC static PhatState Phat_WriteSectorThroughCache(Phat_p phat, LBA_t LBA, 
 }
 
 // Will also update cache if present
-PHAT_FUNC static PhatState Phat_ReadSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, void *buffer)
+PHAT_STATIC_FUNC PhatState Phat_ReadSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, void *buffer)
 {
 	if (!phat->driver.fn_read_sector(buffer, LBA, num_sectors, phat->driver.userdata))
 	{
@@ -662,7 +662,7 @@ PHAT_FUNC static PhatState Phat_ReadSectorsWithoutCache(Phat_p phat, LBA_t LBA, 
 }
 
 // Will also update cache if present
-PHAT_FUNC static PhatState Phat_WriteSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, const void *buffer)
+PHAT_STATIC_FUNC PhatState Phat_WriteSectorsWithoutCache(Phat_p phat, LBA_t LBA, size_t num_sectors, const void *buffer)
 {
 	if (!phat->driver.fn_write_sector(buffer, LBA, num_sectors, phat->driver.userdata))
 	{
@@ -681,7 +681,7 @@ PHAT_FUNC static PhatState Phat_WriteSectorsWithoutCache(Phat_p phat, LBA_t LBA,
 	return PhatState_OK;
 }
 
-PHAT_FUNC static LBA_t Phat_CHS_to_LBA(Phat_CHS_p chs)
+PHAT_STATIC_FUNC LBA_t Phat_CHS_to_LBA(Phat_CHS_p chs)
 {
 	uint8_t actual_sector = chs->sector & 0x1F;
 	uint16_t actual_cylinder = ((uint16_t)(chs->sector & 0xC0) << 2) | chs->cylinder;
@@ -689,7 +689,7 @@ PHAT_FUNC static LBA_t Phat_CHS_to_LBA(Phat_CHS_p chs)
 	return ((LBA_t)actual_cylinder * 255 + chs->head) * 63 + (actual_sector - 1);
 }
 
-PHAT_FUNC static PhatBool_t Phat_LBA_to_CHS(LBA_t LBA, Phat_CHS_p chs)
+PHAT_STATIC_FUNC PhatBool_t Phat_LBA_to_CHS(LBA_t LBA, Phat_CHS_p chs)
 {
 	const uint16_t heads_per_cylinder = 255;
 	const uint8_t sectors_per_track = 63;
@@ -711,7 +711,7 @@ PHAT_FUNC static PhatBool_t Phat_LBA_to_CHS(LBA_t LBA, Phat_CHS_p chs)
 	return ret;
 }
 
-PHAT_FUNC static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting_LBA, LBA_t *p_size_in_sectors)
+PHAT_STATIC_FUNC PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *p_starting_LBA, LBA_t *p_size_in_sectors)
 {
 	LBA_t starting_LBA_from_CHS = Phat_CHS_to_LBA(&entry->starting_chs);
 	LBA_t ending_LBA_from_CHS = Phat_CHS_to_LBA(&entry->ending_chs);
@@ -730,7 +730,7 @@ PHAT_FUNC static PhatBool_t Phat_GetMBREntryInfo(Phat_MBR_Entry_p entry, LBA_t *
 	return 1;
 }
 
-PHAT_FUNC static PhatBool_t Phat_Is2N(uint32_t i)
+PHAT_STATIC_FUNC PhatBool_t Phat_Is2N(uint32_t i)
 {
 	if (!i) return 0;
 	while ((i & 1) == 0) i >>= 1;
@@ -738,7 +738,7 @@ PHAT_FUNC static PhatBool_t Phat_Is2N(uint32_t i)
 	return 0;
 }
 
-PHAT_FUNC static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_FAT_p dbr)
+PHAT_STATIC_FUNC PhatBool_t Phat_IsSectorDBR(const Phat_DBR_FAT_p dbr)
 {
 	if (dbr->boot_sector_signature != 0xAA55) return 0;
 	if (!Phat_Is2N(dbr->bytes_per_sector)) return 0;
@@ -751,7 +751,7 @@ PHAT_FUNC static PhatBool_t Phat_IsSectorDBR(const Phat_DBR_FAT_p dbr)
 	return 1;
 }
 
-PHAT_FUNC static PhatBool_t Phat_IsSectorMBR(const Phat_MBR_p mbr)
+PHAT_STATIC_FUNC PhatBool_t Phat_IsSectorMBR(const Phat_MBR_p mbr)
 {
 	if (Phat_IsSectorDBR((Phat_DBR_FAT_p)mbr)) return 0;
 	if (mbr->boot_signature != 0xAA55) return 0;
@@ -763,7 +763,7 @@ PHAT_FUNC static PhatBool_t Phat_IsSectorMBR(const Phat_MBR_p mbr)
 	return 1;
 }
 
-PHAT_FUNC static PhatBool_t Phat_IsValidGPTHeader(LBA_t LBA_to_header, Phat_GPT_Header_p gpt_header)
+PHAT_STATIC_FUNC PhatBool_t Phat_IsValidGPTHeader(LBA_t LBA_to_header, Phat_GPT_Header_p gpt_header)
 {
 	if (memcmp("EFI PART", gpt_header->signature, 8)) return 0;
 	if (gpt_header->header_size < 92) return 0;
@@ -772,7 +772,7 @@ PHAT_FUNC static PhatBool_t Phat_IsValidGPTHeader(LBA_t LBA_to_header, Phat_GPT_
 	return 1;
 }
 
-PHAT_FUNC static PhatState Phat_GetGPTEntry(Phat_p phat, Phat_GPT_Header_p header, uint32_t partition_index, Phat_GPT_Partition_Entry_p *pp_entry_out)
+PHAT_STATIC_FUNC PhatState Phat_GetGPTEntry(Phat_p phat, Phat_GPT_Header_p header, uint32_t partition_index, Phat_GPT_Partition_Entry_p *pp_entry_out)
 {
 	PhatState ret;
 	Phat_SectorCache_p cached_sector;
@@ -791,7 +791,7 @@ PHAT_FUNC static PhatState Phat_GetGPTEntry(Phat_p phat, Phat_GPT_Header_p heade
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_SetGPTEntry(Phat_p phat, Phat_GPT_Header_p header, uint32_t partition_index, Phat_GPT_Partition_Entry_p entry)
+PHAT_STATIC_FUNC PhatState Phat_SetGPTEntry(Phat_p phat, Phat_GPT_Header_p header, uint32_t partition_index, Phat_GPT_Partition_Entry_p entry)
 {
 	PhatState ret;
 	Phat_SectorCache_p cached_sector;
@@ -817,7 +817,7 @@ PHAT_FUNC static PhatState Phat_SetGPTEntry(Phat_p phat, Phat_GPT_Header_p heade
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_IsDiskGPT(Phat_p phat, Phat_MBR_p mbr, PhatBool_p is_gpt, Phat_GPT_Header_p gpt_header_out)
+PHAT_STATIC_FUNC PhatState Phat_IsDiskGPT(Phat_p phat, Phat_MBR_p mbr, PhatBool_p is_gpt, Phat_GPT_Header_p gpt_header_out)
 {
 	PhatState ret;
 	Phat_SectorCache_p cached_sector;
@@ -844,7 +844,7 @@ PHAT_FUNC static PhatState Phat_IsDiskGPT(Phat_p phat, Phat_MBR_p mbr, PhatBool_
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_GetPartitionInfo(Phat_p phat, uint32_t partition_index, LBA_p partition_start_LBA, LBA_p partition_end_LBA)
+PHAT_STATIC_FUNC PhatState Phat_GetPartitionInfo(Phat_p phat, uint32_t partition_index, LBA_p partition_start_LBA, LBA_p partition_end_LBA)
 {
 	PhatState ret;
 	Phat_SectorCache_p cached_sector;
@@ -932,7 +932,7 @@ PHAT_FUNC PhatState Phat_Init(Phat_p phat)
 }
 
 // Iterate through FAT to find a free cluster
-PHAT_FUNC static PhatState Phat_SearchForFreeCluster(Phat_p phat, Cluster_t from, Cluster_t *cluster_out)
+PHAT_STATIC_FUNC PhatState Phat_SearchForFreeCluster(Phat_p phat, Cluster_t from, Cluster_t *cluster_out)
 {
 	PhatState ret;
 	Cluster_t cluster;
@@ -950,7 +950,7 @@ PHAT_FUNC static PhatState Phat_SearchForFreeCluster(Phat_p phat, Cluster_t from
 }
 
 // Iterate through FAT to count free clusters
-PHAT_FUNC static PhatState Phat_SumFreeClusters(Phat_p phat, Cluster_t *num_free_clusters_out)
+PHAT_STATIC_FUNC PhatState Phat_SumFreeClusters(Phat_p phat, Cluster_t *num_free_clusters_out)
 {
 	PhatState ret;
 	Cluster_t cluster;
@@ -965,18 +965,18 @@ PHAT_FUNC static PhatState Phat_SumFreeClusters(Phat_p phat, Cluster_t *num_free
 	return PhatState_OK;
 }
 
-PHAT_FUNC static LBA_t Phat_ClusterToLBA(Phat_p phat, Cluster_t cluster)
+PHAT_STATIC_FUNC LBA_t Phat_ClusterToLBA(Phat_p phat, Cluster_t cluster)
 {
 	return phat->data_start_LBA + (LBA_t)(cluster - 2) * phat->sectors_per_cluster;
 }
 
 // Find next free cluster starting from phat->next_free_cluster
-PHAT_FUNC static PhatState Phat_SeekForFreeCluster(Phat_p phat, Cluster_t *cluster_out)
+PHAT_STATIC_FUNC PhatState Phat_SeekForFreeCluster(Phat_p phat, Cluster_t *cluster_out)
 {
 	return Phat_SearchForFreeCluster(phat, phat->next_free_cluster, cluster_out);
 }
 
-PHAT_FUNC static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flush_immediately)
+PHAT_STATIC_FUNC PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, PhatBool_t flush_immediately)
 {
 	PhatState ret;
 	Cluster_t clean_bit;
@@ -1000,7 +1000,7 @@ PHAT_FUNC static PhatState Phat_MarkDirty(Phat_p phat, PhatBool_t is_dirty, Phat
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_CheckIsDirty(Phat_p phat, PhatBool_t *is_dirty)
+PHAT_STATIC_FUNC PhatState Phat_CheckIsDirty(Phat_p phat, PhatBool_t *is_dirty)
 {
 	PhatState ret;
 	Cluster_t clean_bit;
@@ -1148,7 +1148,7 @@ PHAT_FUNC PhatState Phat_ChangeWriteEnable(Phat_p phat, PhatBool_t write_enable)
 }
 
 // Should be called after some allocations or deletions happened on the FAT
-PHAT_FUNC static PhatState Phat_UpdateFSInfo(Phat_p phat)
+PHAT_STATIC_FUNC PhatState Phat_UpdateFSInfo(Phat_p phat)
 {
 	PhatState ret = PhatState_OK;
 	Phat_SectorCache_p cached_sector;
@@ -1164,7 +1164,7 @@ PHAT_FUNC static PhatState Phat_UpdateFSInfo(Phat_p phat)
 	return PhatState_OK;
 }
 
-PHAT_FUNC static int Phat_Cache_Compare_LBA(void const *a, void const *b)
+PHAT_STATIC_FUNC int Phat_Cache_Compare_LBA(void const *a, void const *b)
 {
 	Phat_SectorCache_t const *ca = a;
 	Phat_SectorCache_t const *cb = b;
@@ -1256,7 +1256,7 @@ PHAT_FUNC void Phat_SetCurDateTime(Phat_p phat, const Phat_Date_p cur_date, cons
 	if (cur_time) phat->cur_time = *cur_time;
 }
 
-PHAT_FUNC static PhatState Phat_WipeCluster(Phat_p phat, Cluster_t cluster)
+PHAT_STATIC_FUNC PhatState Phat_WipeCluster(Phat_p phat, Cluster_t cluster)
 {
 	PhatState ret;
 	LBA_t cluster_LBA = Phat_ClusterToLBA(phat, cluster) + phat->partition_start_LBA;
@@ -1270,7 +1270,7 @@ PHAT_FUNC static PhatState Phat_WipeCluster(Phat_p phat, Cluster_t cluster)
 }
 
 // Read FAT table by `cluster` starting from 0
-PHAT_FUNC static PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_t *read_out)
+PHAT_STATIC_FUNC PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_t *read_out)
 {
 	PhatState ret = PhatState_OK;
 	uint16_t raw_entry;
@@ -1321,7 +1321,7 @@ PHAT_FUNC static PhatState Phat_ReadFAT(Phat_p phat, Cluster_t cluster, Cluster_
 }
 
 // Write FAT table by `cluster` starting from 0
-PHAT_FUNC static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write, PhatBool_t flush)
+PHAT_STATIC_FUNC PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster_t write, PhatBool_t flush)
 {
 	PhatState ret = PhatState_OK;
 	int half_cluster = 0;
@@ -1385,7 +1385,7 @@ PHAT_FUNC static PhatState Phat_WriteFAT(Phat_p phat, Cluster_t cluster, Cluster
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_UnlinkCluster(Phat_p phat, Cluster_t cluster)
+PHAT_STATIC_FUNC PhatState Phat_UnlinkCluster(Phat_p phat, Cluster_t cluster)
 {
 	PhatState ret;
 	Cluster_t next_sector;
@@ -1405,7 +1405,7 @@ PHAT_FUNC static PhatState Phat_UnlinkCluster(Phat_p phat, Cluster_t cluster)
 }
 
 // `allocated_cluster` could point to a valid cluster that you wish to allocate
-PHAT_FUNC static PhatState Phat_AllocateCluster(Phat_p phat, Cluster_t *allocated_cluster)
+PHAT_STATIC_FUNC PhatState Phat_AllocateCluster(Phat_p phat, Cluster_t *allocated_cluster)
 {
 	PhatState ret;
 	Cluster_t free_cluster = *allocated_cluster;
@@ -1456,7 +1456,7 @@ PHAT_FUNC static PhatState Phat_AllocateCluster(Phat_p phat, Cluster_t *allocate
 }
 
 // The `cur_cluster` is not an index, it's a cluster number.
-PHAT_FUNC static PhatState Phat_GetFATNextCluster(Phat_p phat, Cluster_t cur_cluster, Cluster_t *next_cluster)
+PHAT_STATIC_FUNC PhatState Phat_GetFATNextCluster(Phat_p phat, Cluster_t cur_cluster, Cluster_t *next_cluster)
 {
 	PhatState ret = PhatState_OK;
 	Cluster_t cluster_number;
@@ -1471,7 +1471,7 @@ PHAT_FUNC static PhatState Phat_GetFATNextCluster(Phat_p phat, Cluster_t cur_clu
 	return PhatState_OK;
 }
 
-PHAT_FUNC static Phat_Time_t Phat_ParseTime(uint16_t time, uint8_t tenths)
+PHAT_STATIC_FUNC Phat_Time_t Phat_ParseTime(uint16_t time, uint8_t tenths)
 {
 	Phat_Time_t t =
 	{
@@ -1483,7 +1483,7 @@ PHAT_FUNC static Phat_Time_t Phat_ParseTime(uint16_t time, uint8_t tenths)
 	return t;
 }
 
-PHAT_FUNC static Phat_Date_t Phat_ParseDate(uint16_t date)
+PHAT_STATIC_FUNC Phat_Date_t Phat_ParseDate(uint16_t date)
 {
 	Phat_Date_t d =
 	{
@@ -1494,7 +1494,7 @@ PHAT_FUNC static Phat_Date_t Phat_ParseDate(uint16_t date)
 	return d;
 }
 
-PHAT_FUNC static uint16_t Phat_EncodeTime(Phat_Time_p time)
+PHAT_STATIC_FUNC uint16_t Phat_EncodeTime(Phat_Time_p time)
 {
 	uint16_t raw_time = 0;
 	if (time->hours > 23) time->hours = 23;
@@ -1506,7 +1506,7 @@ PHAT_FUNC static uint16_t Phat_EncodeTime(Phat_Time_p time)
 	return raw_time;
 }
 
-PHAT_FUNC static uint16_t Phat_EncodeDate(Phat_Date_p date)
+PHAT_STATIC_FUNC uint16_t Phat_EncodeDate(Phat_Date_p date)
 {
 	uint16_t raw_date = 0;
 	if (date->year < 1980) date->year = 1980;
@@ -1521,14 +1521,14 @@ PHAT_FUNC static uint16_t Phat_EncodeDate(Phat_Date_p date)
 	return raw_date;
 }
 
-PHAT_FUNC static uint8_t Phat_LFN_ChkSum(uint8_t *file_name_8_3)
+PHAT_STATIC_FUNC uint8_t Phat_LFN_ChkSum(uint8_t *file_name_8_3)
 {
 	uint8_t sum = 0;
 	for (int i = 0; i < 11; i++) sum = ((sum & 1) ? 0x80 : 0) + (sum >> 1) + *file_name_8_3++;
 	return sum;
 }
 
-PHAT_FUNC static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatBool_t allocate_new_sectors)
+PHAT_STATIC_FUNC PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_info, PhatBool_t allocate_new_sectors)
 {
 	PhatState ret = PhatState_OK;
 	Phat_p phat = dir_info->phat;
@@ -1580,7 +1580,7 @@ PHAT_FUNC static PhatState Phat_UpdateClusterByDirItemIndex(Phat_DirInfo_p dir_i
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem_p dir_item)
+PHAT_STATIC_FUNC PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem_p dir_item)
 {
 	PhatState ret = PhatState_OK;
 	LBA_t dir_sector_LBA;
@@ -1619,7 +1619,7 @@ PHAT_FUNC static PhatState Phat_GetDirItem(Phat_DirInfo_p dir_info, Phat_DirItem
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_DirItem_p dir_item)
+PHAT_STATIC_FUNC PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_DirItem_p dir_item)
 {
 	PhatState ret = PhatState_OK;
 	LBA_t dir_sector_LBA;
@@ -1657,7 +1657,7 @@ PHAT_FUNC static PhatState Phat_PutDirItem(Phat_DirInfo_p dir_info, const Phat_D
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_p buffer)
+PHAT_STATIC_FUNC PhatState Phat_SuckLFNIntoBuffer(Phat_LFN_Entry_p lfn_item, Phat_DirInfo_p buffer)
 {
 	uint8_t order = lfn_item->order & 0x3F;
 	uint16_t write_pos = (order - 1) * 13;
@@ -1693,7 +1693,7 @@ Ended:
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatBool_t Phat_IsValidLFNEntry(Phat_DirItem_p lfn_item)
+PHAT_STATIC_FUNC PhatBool_t Phat_IsValidLFNEntry(Phat_DirItem_p lfn_item)
 {
 	Phat_LFN_Entry_p lfne = (Phat_LFN_Entry_p)lfn_item;
 	if (lfne->order == 0xE5) return 0;
@@ -1703,13 +1703,13 @@ PHAT_FUNC static PhatBool_t Phat_IsValidLFNEntry(Phat_DirItem_p lfn_item)
 	return 1;
 }
 
-PHAT_FUNC static PhatState Phat_MoveToNextDirItem(Phat_DirInfo_p dir_info)
+PHAT_STATIC_FUNC PhatState Phat_MoveToNextDirItem(Phat_DirInfo_p dir_info)
 {
 	dir_info->cur_diritem++;
 	return Phat_UpdateClusterByDirItemIndex(dir_info, 0);
 }
 
-PHAT_FUNC static PhatState Phat_MoveToNextDirItemWithAllocation(Phat_DirInfo_p dir_info)
+PHAT_STATIC_FUNC PhatState Phat_MoveToNextDirItemWithAllocation(Phat_DirInfo_p dir_info)
 {
 	dir_info->cur_diritem++;
 	return Phat_UpdateClusterByDirItemIndex(dir_info, 1);
@@ -1823,7 +1823,7 @@ PHAT_FUNC PhatState Phat_NextDirItem(Phat_DirInfo_p dir_info)
 	}
 }
 
-PHAT_FUNC static PhatState Phat_FindFirstLFNEntry(Phat_DirInfo_p dir_info)
+PHAT_STATIC_FUNC PhatState Phat_FindFirstLFNEntry(Phat_DirInfo_p dir_info)
 {
 	PhatState ret;
 	Phat_DirItem_t diritem;
@@ -1952,7 +1952,7 @@ PHAT_FUNC PhatState Phat_OpenDir(Phat_p phat, const WChar_p path, Phat_DirInfo_p
 }
 
 // Open a dir to the path, find the item if can (`PhatState_OK` will be returned), or return `PhatState_EndOfDirectory`
-PHAT_FUNC static PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info, WChar_p *next_path)
+PHAT_STATIC_FUNC PhatState Phat_FindItem(Phat_p phat, WChar_p path, Phat_DirInfo_p dir_info, WChar_p *next_path)
 {
 	PhatState ret;
 	WChar_p dirname_ptr;
@@ -2036,7 +2036,7 @@ PHAT_FUNC PhatBool_t Phat_IsValidFilename(WChar_p filename)
 	return 1;
 }
 
-PHAT_FUNC static PhatBool_t Phat_IsFit83(WChar_p filename, uint8_t *sfn83, uint8_t *case_info)
+PHAT_STATIC_FUNC PhatBool_t Phat_IsFit83(WChar_p filename, uint8_t *sfn83, uint8_t *case_info)
 {
 	PhatBool_t bn_has_lower = 0;
 	PhatBool_t bn_has_upper = 0;
@@ -2087,7 +2087,7 @@ PHAT_FUNC static PhatBool_t Phat_IsFit83(WChar_p filename, uint8_t *sfn83, uint8
 	return 1;
 }
 
-PHAT_FUNC static PhatState Phat_FindShortFileName(Phat_DirInfo_p dir_info, const uint8_t *sfn83, PhatBool_p found)
+PHAT_STATIC_FUNC PhatState Phat_FindShortFileName(Phat_DirInfo_p dir_info, const uint8_t *sfn83, PhatBool_p found)
 {
 	PhatState ret;
 
@@ -2112,7 +2112,7 @@ PHAT_FUNC static PhatState Phat_FindShortFileName(Phat_DirInfo_p dir_info, const
 	}
 }
 
-PHAT_FUNC static PhatState Phat_Gen83NameForLongFilename(Phat_DirInfo_p dir_info, const WChar_p longname, uint8_t *sfn83)
+PHAT_STATIC_FUNC PhatState Phat_Gen83NameForLongFilename(Phat_DirInfo_p dir_info, const WChar_p longname, uint8_t *sfn83)
 {
 	PhatBool_t found = 0;
 	PhatState ret;
@@ -2225,7 +2225,7 @@ PHAT_FUNC static PhatState Phat_Gen83NameForLongFilename(Phat_DirInfo_p dir_info
 	}
 }
 
-PHAT_FUNC static PhatState Phat_CreateNewItemInDir(Phat_DirInfo_p dir_info, const WChar_p itemname, uint8_t attrib)
+PHAT_STATIC_FUNC PhatState Phat_CreateNewItemInDir(Phat_DirInfo_p dir_info, const WChar_p itemname, uint8_t attrib)
 {
 	PhatState ret = PhatState_OK;
 	uint8_t name83[11];
@@ -2489,7 +2489,7 @@ PHAT_FUNC PhatState Phat_OpenFileFromRoot(Phat_p phat, const WChar_p path, PhatB
 	return Phat_OpenFile(dir_info, path, readonly, file_info);
 }
 
-PHAT_FUNC static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info, PhatBool_t allocate_new_sectors)
+PHAT_STATIC_FUNC PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_info, PhatBool_t allocate_new_sectors)
 {
 	PhatState ret = PhatState_OK;
 	Phat_p phat = file_info->phat;
@@ -2525,7 +2525,7 @@ PHAT_FUNC static PhatState Phat_UpdateClusterByFilePointer(Phat_FileInfo_p file_
 	return PhatState_OK;
 }
 
-PHAT_FUNC static PhatState Phat_GetCurFilePointerLBA(Phat_FileInfo_p file_info, LBA_p LBA_out, PhatBool_t allocate_new_sectors)
+PHAT_STATIC_FUNC PhatState Phat_GetCurFilePointerLBA(Phat_FileInfo_p file_info, LBA_p LBA_out, PhatBool_t allocate_new_sectors)
 {
 	PhatState ret = Phat_UpdateClusterByFilePointer(file_info, allocate_new_sectors);
 	if (ret != PhatState_OK) return ret;

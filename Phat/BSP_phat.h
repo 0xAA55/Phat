@@ -20,6 +20,10 @@ typedef int32_t SLBA_t, *SLBA_p;
 #define PHAT_FUNC
 #endif
 
+#ifndef PHAT_STATIC_FUNC
+#define PHAT_STATIC_FUNC static
+#endif
+
 #ifndef SDMMC_SWDATATIMEOUT
 #define SDMMC_SWDATATIMEOUT 200
 #endif

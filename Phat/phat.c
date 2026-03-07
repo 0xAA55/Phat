@@ -458,7 +458,7 @@ PHAT_FUNC void Phat_PathToName(WChar_p path, WChar_p name)
 	size_t length = 0;
 
 	// Check parameters
-	if (!path || !name);
+	if (!path || !name) return;
 
 	chr = Phat_ToEndOfString(path);
 	// Remove trailing slashes
